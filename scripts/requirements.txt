@@ -1,0 +1,2 @@
+# Dependencies for test automation scripts
+requests>=2.31.0

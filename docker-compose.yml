@@ -1,0 +1,96 @@
+version: "3.9"
+
+# ── TrackForce — Field Force & Delivery Management Production Stack ─────────────
+# Designed for 200-300 concurrent agents.
+#
+# Scale workers:    docker-compose up --scale backend=3
+# Monitor Redis:    docker exec -it trackforce_redis redis-cli monitor
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: trackforce_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: trackforce
+      POSTGRES_USER: trackforce
+      POSTGRES_PASSWORD: trackforce_secret
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trackforce"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis (pub/sub + optional caching) ─────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: trackforce_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+        --maxmemory 256mb
+        --maxmemory-policy allkeys-lru
+        --save ""
+        --appendonly no
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── FastAPI Backend ─────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: trackforce_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://trackforce:trackforce_secret@postgres:5432/trackforce
+      REDIS_URL: redis://redis:6379/0
+      REDIS_ENABLED: "true"
+      SECRET_KEY: "change-me-to-a-cryptographically-random-64-char-string-in-prod"
+      DEBUG: "false"
+      LOG_LEVEL: info
+      # Scale workers to (2×CPU)+1 at runtime:
+      WEB_CONCURRENCY: "5"
+    ports:
+      - "8000:8000"
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── React Frontend (Nginx) ──────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: trackforce_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  uploads_data:
+

@@ -1,0 +1,333 @@
+{
+  "base_url": "http://localhost:8000",
+  "admin_email": "admin01@testenv.example.com",
+  "admin_password": "MySecret99",
+  "admins": [
+    {
+      "id": 2,
+      "email": "admin01@testenv.example.com"
+    },
+    {
+      "id": 3,
+      "email": "admin02@testenv.example.com"
+    }
+  ],
+  "managers": [
+    {
+      "id": 4,
+      "email": "manager01@testenv.example.com"
+    },
+    {
+      "id": 5,
+      "email": "manager02@testenv.example.com"
+    },
+    {
+      "id": 6,
+      "email": "manager03@testenv.example.com"
+    },
+    {
+      "id": 7,
+      "email": "manager04@testenv.example.com"
+    },
+    {
+      "id": 8,
+      "email": "manager05@testenv.example.com"
+    },
+    {
+      "id": 9,
+      "email": "manager06@testenv.example.com"
+    },
+    {
+      "id": 10,
+      "email": "manager07@testenv.example.com"
+    },
+    {
+      "id": 11,
+      "email": "manager08@testenv.example.com"
+    },
+    {
+      "id": 12,
+      "email": "manager09@testenv.example.com"
+    },
+    {
+      "id": 13,
+      "email": "manager10@testenv.example.com"
+    }
+  ],
+  "field_agents": [
+    {
+      "id": 14,
+      "email": "agent01@testenv.example.com",
+      "manager_id": 4
+    },
+    {
+      "id": 15,
+      "email": "agent02@testenv.example.com",
+      "manager_id": 5
+    },
+    {
+      "id": 16,
+      "email": "agent03@testenv.example.com",
+      "manager_id": 6
+    },
+    {
+      "id": 17,
+      "email": "agent04@testenv.example.com",
+      "manager_id": 7
+    },
+    {
+      "id": 18,
+      "email": "agent05@testenv.example.com",
+      "manager_id": 8
+    },
+    {
+      "id": 19,
+      "email": "agent06@testenv.example.com",
+      "manager_id": 9
+    },
+    {
+      "id": 20,
+      "email": "agent07@testenv.example.com",
+      "manager_id": 10
+    },
+    {
+      "id": 21,
+      "email": "agent08@testenv.example.com",
+      "manager_id": 11
+    },
+    {
+      "id": 22,
+      "email": "agent09@testenv.example.com",
+      "manager_id": 12
+    },
+    {
+      "id": 23,
+      "email": "agent10@testenv.example.com",
+      "manager_id": 13
+    }
+  ],
+  "drivers": [
+    {
+      "id": 24,
+      "email": "driver01@testenv.example.com"
+    },
+    {
+      "id": 25,
+      "email": "driver02@testenv.example.com"
+    },
+    {
+      "id": 26,
+      "email": "driver03@testenv.example.com"
+    },
+    {
+      "id": 27,
+      "email": "driver04@testenv.example.com"
+    },
+    {
+      "id": 28,
+      "email": "driver05@testenv.example.com"
+    },
+    {
+      "id": 29,
+      "email": "driver06@testenv.example.com"
+    },
+    {
+      "id": 30,
+      "email": "driver07@testenv.example.com"
+    },
+    {
+      "id": 31,
+      "email": "driver08@testenv.example.com"
+    },
+    {
+      "id": 32,
+      "email": "driver09@testenv.example.com"
+    },
+    {
+      "id": 33,
+      "email": "driver10@testenv.example.com"
+    },
+    {
+      "id": 34,
+      "email": "driver11@testenv.example.com"
+    },
+    {
+      "id": 35,
+      "email": "driver12@testenv.example.com"
+    },
+    {
+      "id": 36,
+      "email": "driver13@testenv.example.com"
+    },
+    {
+      "id": 37,
+      "email": "driver14@testenv.example.com"
+    },
+    {
+      "id": 38,
+      "email": "driver15@testenv.example.com"
+    }
+  ],
+  "customers": [
+    {
+      "id": 1,
+      "name": "[TEST] Customer 01"
+    },
+    {
+      "id": 2,
+      "name": "[TEST] Customer 02"
+    },
+    {
+      "id": 3,
+      "name": "[TEST] Customer 03"
+    },
+    {
+      "id": 4,
+      "name": "[TEST] Customer 04"
+    },
+    {
+      "id": 5,
+      "name": "[TEST] Customer 05"
+    },
+    {
+      "id": 6,
+      "name": "[TEST] Customer 06"
+    },
+    {
+      "id": 7,
+      "name": "[TEST] Customer 07"
+    },
+    {
+      "id": 8,
+      "name": "[TEST] Customer 08"
+    },
+    {
+      "id": 9,
+      "name": "[TEST] Customer 09"
+    },
+    {
+      "id": 10,
+      "name": "[TEST] Customer 10"
+    },
+    {
+      "id": 11,
+      "name": "[TEST] Customer 11"
+    },
+    {
+      "id": 12,
+      "name": "[TEST] Customer 12"
+    },
+    {
+      "id": 13,
+      "name": "[TEST] Customer 13"
+    },
+    {
+      "id": 14,
+      "name": "[TEST] Customer 14"
+    },
+    {
+      "id": 15,
+      "name": "[TEST] Customer 15"
+    },
+    {
+      "id": 16,
+      "name": "[TEST] Customer 16"
+    },
+    {
+      "id": 17,
+      "name": "[TEST] Customer 17"
+    },
+    {
+      "id": 18,
+      "name": "[TEST] Customer 18"
+    },
+    {
+      "id": 19,
+      "name": "[TEST] Customer 19"
+    },
+    {
+      "id": 20,
+      "name": "[TEST] Customer 20"
+    },
+    {
+      "id": 21,
+      "name": "[TEST] Customer 21"
+    },
+    {
+      "id": 22,
+      "name": "[TEST] Customer 22"
+    },
+    {
+      "id": 23,
+      "name": "[TEST] Customer 23"
+    },
+    {
+      "id": 24,
+      "name": "[TEST] Customer 24"
+    },
+    {
+      "id": 25,
+      "name": "[TEST] Customer 25"
+    },
+    {
+      "id": 26,
+      "name": "[TEST] Customer 26"
+    },
+    {
+      "id": 27,
+      "name": "[TEST] Customer 27"
+    },
+    {
+      "id": 28,
+      "name": "[TEST] Customer 28"
+    },
+    {
+      "id": 29,
+      "name": "[TEST] Customer 29"
+    },
+    {
+      "id": 30,
+      "name": "[TEST] Customer 30"
+    },
+    {
+      "id": 31,
+      "name": "[TEST] Customer 31"
+    },
+    {
+      "id": 32,
+      "name": "[TEST] Customer 32"
+    },
+    {
+      "id": 33,
+      "name": "[TEST] Customer 33"
+    },
+    {
+      "id": 34,
+      "name": "[TEST] Customer 34"
+    },
+    {
+      "id": 35,
+      "name": "[TEST] Customer 35"
+    },
+    {
+      "id": 36,
+      "name": "[TEST] Customer 36"
+    },
+    {
+      "id": 37,
+      "name": "[TEST] Customer 37"
+    },
+    {
+      "id": 38,
+      "name": "[TEST] Customer 38"
+    },
+    {
+      "id": 39,
+      "name": "[TEST] Customer 39"
+    },
+    {
+      "id": 40,
+      "name": "[TEST] Customer 40"
+    }
+  ]
+}

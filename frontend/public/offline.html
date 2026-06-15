@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>TrackForce — Offline</title>
+  <style>
+    body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#1e3a8a;color:#fff;}
+    .card{background:rgba(255,255,255,.1);border-radius:1rem;padding:2.5rem;text-align:center;max-width:360px;}
+    h1{font-size:3rem;margin:0;}
+    p{color:#bfdbfe;margin-top:.5rem;}
+    button{margin-top:1.5rem;background:#3b82f6;color:#fff;border:none;padding:.75rem 2rem;border-radius:.5rem;font-size:1rem;cursor:pointer;}
+    button:hover{background:#2563eb;}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>📡</h1>
+    <h2>You're Offline</h2>
+    <p>Your GPS and events are being saved locally and will sync automatically when connectivity is restored.</p>
+    <button onclick="location.reload()">Try Again</button>
+  </div>
+</body>
+</html>
