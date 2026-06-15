@@ -125,7 +125,7 @@ export default function LiveTracking() {
                   <div className="text-sm min-w-[160px]">
                     <p className="font-semibold">{agent.full_name}</p>
                     <p className="text-gray-500 text-xs">{agent.vehicle_number}</p>
-                    <p className="text-gray-500 text-xs">{agent.zone}</p>
+                    <p className="text-gray-500 text-xs">{agent.assigned_zone || 'No zone'}</p>
                     {agent.speed !== undefined && <p className="text-blue-600 text-xs">{agent.speed?.toFixed(1)} km/h</p>}
                     {agent.address && <p className="text-gray-400 text-xs mt-1">{agent.address}</p>}
                     {agent.last_seen && (
