@@ -3,6 +3,7 @@ import { customersApi } from '../services/api'
 import type { Customer } from '../types'
 import DataTable from '../components/DataTable'
 import { UserCheck, Search, Plus, MapPin } from 'lucide-react'
+import ImportTemplateButtons from '../components/ImportTemplateButtons'
 import toast from 'react-hot-toast'
 
 
@@ -87,61 +88,53 @@ export default function Customers() {
           <button className="btn-primary flex items-center gap-2" onClick={() => setShowForm(s => !s)}>
             <Plus className="w-4 h-4" /> Add Customer
           </button>
-          <label className="btn-outline cursor-pointer">
-            Import CSV
-            <input type="file" accept=".csv" className="hidden" onChange={(e) => setCsvFile(e.target.files?.[0] || null)} />
-          </label>
-          <button className="btn" onClick={async () => {
-            setImportError(null)
-            setImportResult(null)
-            setUploadProgress(0)
-            if (!csvFile) return toast.error('Select a CSV file first')
-            try {
-              await new Promise<void>((resolve, reject) => {
-                const xhr = new XMLHttpRequest()
-                xhr.open('POST', '/api/customers/import')
-                const token = localStorage.getItem('access_token')
-                if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
-                xhr.upload.onprogress = (e) => {
-                  if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100))
-                }
-                xhr.onload = () => {
-                  const status = xhr.status
-                  let json: any = null
-                  try { json = JSON.parse(xhr.responseText) } catch (e) { json = null }
-                  if (status >= 200 && status < 300) {
-                    setImportResult(json)
-                    toast.success(`Imported ${json.imported} customers`)
-                    setCsvFile(null)
-                    resolve()
-                  } else if (json && json.detail) {
-                    setImportError(JSON.stringify(json.detail))
-                    reject(new Error('Import failed'))
-                  } else {
-                    setImportError(`HTTP ${status}`)
-                    reject(new Error('Import failed'))
+          <ImportTemplateButtons
+            accept=".csv"
+            onFile={(f)=>setCsvFile(f)}
+            onUpload={async ()=>{
+              setImportError(null)
+              setImportResult(null)
+              setUploadProgress(0)
+              if (!csvFile) return toast.error('Select a CSV file first')
+              try {
+                await new Promise<void>((resolve, reject) => {
+                  const xhr = new XMLHttpRequest()
+                  xhr.open('POST', '/api/customers/import')
+                  const token = localStorage.getItem('access_token')
+                  if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+                  xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100))
                   }
-                }
-                xhr.onerror = () => { setImportError('Network error'); reject(new Error('Network error')) }
-                const fd = new FormData(); fd.append('file', csvFile)
-                xhr.send(fd)
-              })
-            } catch (err) {
-              toast.error('Import failed')
-            } finally {
-              setUploadProgress(null)
-            }
-          }}>Upload</button>
-          <button className="btn ghost" onClick={() => {
-            const csv = 'name,phone,city,customer_type,assigned_agent_id\nShop A,8887776666,Pune,retail,\n'
-            const blob = new Blob([csv], { type: 'text/csv' })
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = 'customers_template.csv'
-            a.click()
-            URL.revokeObjectURL(url)
-          }}>Download Template</button>
+                  xhr.onload = () => {
+                    const status = xhr.status
+                    let json: any = null
+                    try { json = JSON.parse(xhr.responseText) } catch (e) { json = null }
+                    if (status >= 200 && status < 300) {
+                      setImportResult(json)
+                      toast.success(`Imported ${json.imported} customers`)
+                      setCsvFile(null)
+                      resolve()
+                    } else if (json && json.detail) {
+                      setImportError(JSON.stringify(json.detail))
+                      reject(new Error('Import failed'))
+                    } else {
+                      setImportError(`HTTP ${status}`)
+                      reject(new Error('Import failed'))
+                    }
+                  }
+                  xhr.onerror = () => { setImportError('Network error'); reject(new Error('Network error')) }
+                  const fd = new FormData(); fd.append('file', csvFile || '')
+                  xhr.send(fd)
+                })
+              } catch (err) {
+                toast.error('Import failed')
+              } finally {
+                setUploadProgress(null)
+              }
+            }}
+            templateFilename={'customers_template.csv'}
+            templateContent={'name,phone,city,customer_type,assigned_agent_id\nShop A,8887776666,Pune,retail,\n'}
+          />
         </div>
       </div>
 

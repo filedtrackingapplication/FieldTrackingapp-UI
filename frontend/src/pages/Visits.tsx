@@ -4,6 +4,8 @@ import type { Visit, VisitStatus } from '../types'
 import DataTable from '../components/DataTable'
 import { ClipboardList, CheckCircle, Clock, XCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
+import ImportTemplateButtons from '../components/ImportTemplateButtons'
+import { useRef } from 'react'
 
 const statusBadge: Record<VisitStatus, string> = {
   planned: 'badge-blue',
@@ -16,6 +18,8 @@ export default function Visits() {
   const [visits, setVisits] = useState<Visit[]>([])
   const [summary, setSummary] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [csv, setCsv] = useState<File|null>(null)
+  const [uploading, setUploading] = useState<number|null>(null)
 
   useEffect(() => {
     Promise.all([visitsApi.list(), visitsApi.summaryToday()])
@@ -63,9 +67,25 @@ export default function Visits() {
           <h1 className="text-2xl font-bold text-gray-900">Visits</h1>
           <p className="text-gray-500 text-sm">Customer visit tracking</p>
         </div>
-        <button className="btn-primary flex items-center gap-2">
-          <ClipboardList className="w-4 h-4" /> New Visit
-        </button>
+        <div className="flex items-center gap-2">
+          <button className="btn-primary flex items-center gap-2">
+            <ClipboardList className="w-4 h-4" /> New Visit
+          </button>
+          <ImportTemplateButtons accept=".csv" onFile={(f)=>setCsv(f)} onUpload={async ()=>{
+            if(!csv) return toast.error('Select CSV first')
+            setUploading(0)
+            try{
+              await new Promise<void>((resolve,reject)=>{
+                const xhr = new XMLHttpRequest(); xhr.open('POST','/api/visits/import'); const token = localStorage.getItem('access_token'); if(token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+                xhr.upload.onprogress = (e)=>{ if(e.lengthComputable) setUploading(Math.round((e.loaded/e.total)*100)) }
+                xhr.onload = ()=>{ if(xhr.status>=200&&xhr.status<300){ toast.success('Import completed'); setCsv(null); resolve() } else { reject() }}
+                xhr.onerror = ()=>reject()
+                const fd = new FormData(); fd.append('file', csv || ''); xhr.send(fd)
+              })
+            }catch(e){ toast.error('Import failed') }
+            finally{ setUploading(null) }
+          }} templateFilename={'visits_template.csv'} templateContent={'customer_id,agent_id,visit_date,purpose\n'} />
+        </div>
       </div>
 
       {/* Today's summary */}
