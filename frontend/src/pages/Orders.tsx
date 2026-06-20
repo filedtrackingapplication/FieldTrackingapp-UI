@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { ordersApi } from '../services/api'
 import type { Order, OrderStatus } from '../types'
 import DataTable from '../components/DataTable'
 import { ShoppingCart, TrendingUp, Package } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useState, useRef } from 'react'
-import { ordersApi } from '../services/api'
+
 
 const statusBadge: Record<OrderStatus, string> = {
   pending: 'badge-yellow',
@@ -21,6 +20,10 @@ export default function Orders() {
   const [analytics, setAnalytics] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<OrderStatus | ''>('')
+  const [csvFile, setCsvFile] = useState<File | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
+  const [importResult, setImportResult] = useState<any | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
 
   const load = () => {
     setLoading(true)

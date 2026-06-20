@@ -15,6 +15,7 @@ from app.config import settings
 from app.database import create_tables
 from app.tasks import periodic_location_flush, flush_all_pending
 from app.routers import auth, agents, tracking, visits, orders, inventory, expenses, customers, dashboard, odometer
+from app.routers import attendance
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +91,7 @@ app.include_router(expenses.router,  prefix="/api/expenses",  tags=["Expenses"])
 app.include_router(customers.router, prefix="/api/customers", tags=["Customers"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
 app.include_router(odometer.router,  prefix="/api/odometer",  tags=["Odometer"])
+app.include_router(attendance.router, prefix="/api/admin/attendance", tags=["Admin Attendance"])
 
 
 # ─── Utility endpoints ────────────────────────────────────────────────────────

@@ -18,6 +18,7 @@ const navItems = [
   { to: '/customers', icon: UserCheck, label: 'Customers', roles: ['admin', 'manager', 'field_agent', 'driver'] },
   { to: '/odometer', icon: Gauge, label: 'Odometer', roles: ['admin', 'manager', 'driver'] },
   { to: '/reports', icon: BarChart3, label: 'Reports', roles: ['admin', 'manager'] },
+  { to: '/admin/attendance', icon: Clock, label: 'Attendance', roles: ['admin'] },
 ]
 
 export default function Sidebar() {
