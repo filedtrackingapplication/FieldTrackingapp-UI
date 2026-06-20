@@ -183,7 +183,7 @@ def onboard_visit(
 
 
 @router.post('/import')
-def import_visits(file: UploadFile = File(...), current_user: User = Depends(require_roles("ADMIN", "MANAGER")), db: Session = Depends(get_db)):
+def import_visits(file: UploadFile = File(...), current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.MANAGER)), db: Session = Depends(get_db)):
     raw = file.file.read()
     try:
         content = raw.decode('utf-8')
