@@ -4,6 +4,7 @@ import type { Expense, ExpenseStatus } from '../types'
 import DataTable from '../components/DataTable'
 import { DollarSign, CheckCircle, Clock, XCircle, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
+import ImportTemplateButtons from '../components/ImportTemplateButtons'
 import { useAuthStore } from '../store/authStore'
 
 
@@ -134,16 +135,17 @@ export default function Expenses() {
 
       <div className="card">
         <div className="mb-4 flex items-center gap-2">
-          <label className="btn-outline cursor-pointer">
-            Import CSV
-            <input type="file" accept=".csv" className="hidden" onChange={(e)=>setCsvFile(e.target.files?.[0]||null)} />
-          </label>
-          <button className="btn" onClick={async ()=>{
-            if(!csvFile) return toast.error('Select CSV')
-            setUploadProgress(0); setImportResult(null)
-            try{ await new Promise<void>((resolve,reject)=>{ const xhr=new XMLHttpRequest(); xhr.open('POST','/api/expenses/import'); const token=localStorage.getItem('access_token'); if(token) xhr.setRequestHeader('Authorization', `Bearer ${token}`); xhr.upload.onprogress=(e)=>{ if(e.lengthComputable) setUploadProgress(Math.round((e.loaded/e.total)*100)) }; xhr.onload=()=>{ if(xhr.status>=200&&xhr.status<300){ setImportResult(JSON.parse(xhr.responseText)); toast.success('Import done'); setCsvFile(null); resolve() } else reject() }; xhr.onerror=()=>reject(); const fd=new FormData(); fd.append('file', csvFile); xhr.send(fd) }) }catch(e){ toast.error('Import failed') } finally{ setUploadProgress(null) }
-          }}>Upload</button>
-          <button className="btn ghost" onClick={()=>{ const csv='agent_id,amount,expense_date,category,description,reference\n1,120.50,2026-06-19,fuel,Petrol,REF123\n'; const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='expenses_template.csv'; a.click(); URL.revokeObjectURL(url) }}>Download Template</button>
+          <ImportTemplateButtons
+            accept=".csv"
+            onFile={(f)=>setCsvFile(f)}
+            onUpload={async ()=>{
+              if(!csvFile) return toast.error('Select CSV')
+              setUploadProgress(0); setImportResult(null)
+              try{ await new Promise<void>((resolve,reject)=>{ const xhr=new XMLHttpRequest(); xhr.open('POST','/api/expenses/import'); const token=localStorage.getItem('access_token'); if(token) xhr.setRequestHeader('Authorization', `Bearer ${token}`); xhr.upload.onprogress=(e)=>{ if(e.lengthComputable) setUploadProgress(Math.round((e.loaded/e.total)*100)) }; xhr.onload=()=>{ if(xhr.status>=200&&xhr.status<300){ setImportResult(JSON.parse(xhr.responseText)); toast.success('Import done'); setCsvFile(null); resolve() } else reject() }; xhr.onerror=()=>reject(); const fd=new FormData(); fd.append('file', csvFile||''); xhr.send(fd) }) }catch(e){ toast.error('Import failed') } finally{ setUploadProgress(null) }
+            }}
+            templateFilename={'expenses_template.csv'}
+            templateContent={'agent_id,amount,expense_date,category,description,reference\n1,120.50,2026-06-19,fuel,Petrol,REF123\n'}
+          />
         </div>
         {uploadProgress !== null && <div className="mb-2">Uploading: {uploadProgress}%</div>}
         {importResult && (<div className="mb-4 p-2 border rounded text-sm">Imported: {importResult.imported}<div className="max-h-36 overflow-auto"><table className="w-full text-xs"><tbody>{importResult.results.map((r:any)=>(<tr key={r.row}><td className="pr-2">{r.row}</td><td className="pr-2">{r.status}</td><td>{r.reason||r.id||''}</td></tr>))}</tbody></table></div></div>)}
