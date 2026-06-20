@@ -4,7 +4,7 @@ from typing import List, Optional
 from datetime import date, datetime, timezone
 
 from app.database import get_db
-from app.models.models import Visit, User, Customer, VisitStatus
+from app.models.models import Visit, User, Customer, VisitStatus, UserRole
 from app.schemas.schemas import VisitCreate, VisitCheckIn, VisitCheckOut, VisitOut
 from app.services.auth_service import get_current_user
 from app.services.auth_service import require_roles
