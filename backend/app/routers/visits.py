@@ -207,6 +207,14 @@ def import_visits(file: UploadFile = File(...), current_user: User = Depends(req
         agent_id = row.get('agent_id')
         customer_id = row.get('customer_id')
         visit_date = row.get('visit_date')
+        # Parse date string to Python date object
+        from datetime import date as _date
+        try:
+            if visit_date:
+                visit_date = _date.fromisoformat(visit_date)
+        except Exception:
+            results.append({'row': idx, 'status': 'error', 'reason': f'invalid visit_date format: {visit_date}'})
+            continue
         if not (agent_id and customer_id and visit_date):
             results.append({'row': idx, 'status': 'skipped', 'reason': 'missing agent_id/customer_id/visit_date'})
             continue

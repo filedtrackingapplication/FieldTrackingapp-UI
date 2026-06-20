@@ -172,6 +172,14 @@ def import_expenses(file: FU = FF(...), current_user: User = Depends(require_rol
             agent_id = row.get('agent_id')
             amount = row.get('amount')
             expense_date = row.get('expense_date')
+            # parse expense_date to Python date
+            from datetime import date as _date
+            try:
+                if expense_date:
+                    expense_date = _date.fromisoformat(expense_date)
+            except Exception:
+                results.append({'row': idx, 'status': 'error', 'reason': f'invalid expense_date format: {expense_date}'})
+                continue
             if not (agent_id and amount and expense_date):
                 results.append({'row': idx, 'status': 'skipped', 'reason': 'missing agent_id/amount/expense_date'})
                 continue
