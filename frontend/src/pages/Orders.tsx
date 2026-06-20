@@ -4,6 +4,8 @@ import type { Order, OrderStatus } from '../types'
 import DataTable from '../components/DataTable'
 import { ShoppingCart, TrendingUp, Package } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useState, useRef } from 'react'
+import { ordersApi } from '../services/api'
 
 const statusBadge: Record<OrderStatus, string> = {
   pending: 'badge-yellow',
@@ -118,6 +120,20 @@ export default function Orders() {
       )}
 
       <div className="card">
+        <div className="mb-4 flex items-center gap-2">
+          <label className="btn-outline cursor-pointer">
+            Import CSV
+            <input ref={el=>inputRef.current=el} type="file" accept=".csv" className="hidden" onChange={(e)=>setCsvFile(e.target.files?.[0]||null)} />
+          </label>
+          <button className="btn" onClick={async ()=>{
+            if(!csvFile) return toast.error('Select CSV')
+            setUploadProgress(0); setImportResult(null)
+            try{ await new Promise<void>((resolve,reject)=>{ const xhr=new XMLHttpRequest(); xhr.open('POST','/api/orders/import'); const token=localStorage.getItem('access_token'); if(token) xhr.setRequestHeader('Authorization', `Bearer ${token}`); xhr.upload.onprogress=(e)=>{ if(e.lengthComputable) setUploadProgress(Math.round((e.loaded/e.total)*100)) }; xhr.onload=()=>{ if(xhr.status>=200&&xhr.status<300){ setImportResult(JSON.parse(xhr.responseText)); toast.success('Import done'); setCsvFile(null); resolve() } else reject() }; xhr.onerror=()=>reject(); const fd=new FormData(); fd.append('file', csvFile); xhr.send(fd) }) }catch(e){ toast.error('Import failed') } finally{ setUploadProgress(null) }
+          }}>Upload</button>
+          <button className="btn ghost" onClick={()=>{ const csv='order_number,agent_id,customer_id\nORD-ABC123,1,41\n'; const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='orders_template.csv'; a.click(); URL.revokeObjectURL(url) }}>Download Template</button>
+        </div>
+        {uploadProgress !== null && <div className="mb-2">Uploading: {uploadProgress}%</div>}
+        {importResult && (<div className="mb-4 p-2 border rounded text-sm">Imported: {importResult.imported}<div className="max-h-36 overflow-auto"><table className="w-full text-xs"><tbody>{importResult.results.map((r:any)=>(<tr key={r.row}><td className="pr-2">{r.row}</td><td className="pr-2">{r.status}</td><td>{r.reason||r.id||''}</td></tr>))}</tbody></table></div></div>)}
         {/* Filter */}
         <div className="flex items-center gap-3 mb-4 flex-wrap">
           {(['', 'pending', 'confirmed', 'dispatched', 'delivered', 'cancelled'] as const).map((s) => (

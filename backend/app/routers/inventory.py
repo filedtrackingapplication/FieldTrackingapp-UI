@@ -14,6 +14,9 @@ from app.schemas.schemas import (
     InventoryAssignmentCreate, InventoryAssignmentUpdate, InventoryAssignmentOut,
 )
 from app.services.auth_service import get_current_user, require_roles
+from fastapi import UploadFile, File
+import csv
+from io import StringIO
 
 router = APIRouter()
 
@@ -149,3 +152,59 @@ def update_assignment(
     db.commit()
     db.refresh(a)
     return a
+
+
+@router.post('/products/onboard', response_model=ProductOut, status_code=201)
+def onboard_product(data: ProductCreate, current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.MANAGER)), db: Session = Depends(get_db)):
+    return create_product(data, current_user, db)
+
+
+@router.post('/products/import')
+def import_products(file: UploadFile = File(...), current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.MANAGER)), db: Session = Depends(get_db)):
+    raw = file.file.read()
+    try:
+        content = raw.decode('utf-8')
+    except Exception:
+        content = raw.decode('latin-1')
+    sample = content[:4096]
+    try:
+        dialect = csv.Sniffer().sniff(sample)
+        delim = dialect.delimiter
+    except Exception:
+        delim = ','
+    if content.startswith('\ufeff'):
+        content = content.lstrip('\ufeff')
+    reader = csv.DictReader(StringIO(content), delimiter=delim)
+    results = []
+    created = 0
+    rows = list(reader)
+    if not rows:
+        return {'imported': 0, 'results': [{'row': 0, 'status': 'error', 'reason': 'no rows parsed - check CSV headers/delimiter'}]}
+    for idx, row in enumerate(rows, start=1):
+        sku = (row.get('sku') or '').strip()
+        name = (row.get('name') or '').strip()
+        if not sku and not name:
+            results.append({'row': idx, 'status': 'skipped', 'reason': 'missing sku and name'})
+            continue
+        if sku and db.query(Product).filter(Product.sku == sku).first():
+            results.append({'row': idx, 'status': 'skipped', 'reason': 'duplicate sku'})
+            continue
+        try:
+            price_val = row.get('price')
+            try:
+                price = float(price_val) if price_val not in (None, '') else 0.0
+            except Exception:
+                price = 0.0
+            p = Product(sku=sku or None, name=name or None, category=row.get('category') or None, price=price)
+            db.add(p)
+            db.flush()
+            inv = Inventory(product_id=p.id, warehouse_stock=int(row.get('warehouse_stock') or 0))
+            db.add(inv)
+            db.commit()
+            db.refresh(p)
+            created += 1
+            results.append({'row': idx, 'status': 'created', 'id': p.id})
+        except Exception as e:
+            db.rollback()
+            results.append({'row': idx, 'status': 'error', 'reason': str(e)})
+    return {'imported': created, 'results': results, 'parsed_rows': len(rows), 'fieldnames': reader.fieldnames or []}

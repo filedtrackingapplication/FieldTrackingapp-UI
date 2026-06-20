@@ -48,6 +48,8 @@ export const agentsApi = {
   update: (id: number, data: object) => api.put(`/agents/${id}`, data),
   deactivate: (id: number) => api.delete(`/agents/${id}`),
   stats: (id: number) => api.get(`/agents/${id}/stats`),
+  onboard: (data: object) => api.post('/agents/onboard', data),
+  importCsv: (form: FormData) => api.post('/agents/import', form, { headers: { 'Content-Type': 'multipart/form-data' } }),
 }
 
 // ─── Tracking ────────────────────────────────────────────
@@ -68,6 +70,8 @@ export const visitsApi = {
   checkIn: (id: number, data: object) => api.post(`/visits/${id}/check-in`, data),
   checkOut: (id: number, data: object) => api.post(`/visits/${id}/check-out`, data),
   summaryToday: () => api.get('/visits/summary/today'),
+  onboard: (data: object) => api.post('/visits/onboard', data),
+  importCsv: (form: FormData) => api.post('/visits/import', form, { headers: { 'Content-Type': 'multipart/form-data' } }),
 }
 
 // ─── Orders ──────────────────────────────────────────────
@@ -77,6 +81,8 @@ export const ordersApi = {
   create: (data: object) => api.post('/orders/', data),
   update: (id: number, data: object) => api.put(`/orders/${id}`, data),
   analytics: (params?: object) => api.get('/orders/analytics/summary', { params }),
+  onboard: (data: object) => api.post('/orders/onboard', data),
+  importCsv: (form: FormData) => api.post('/orders/import', form, { headers: { 'Content-Type': 'multipart/form-data' } }),
 }
 
 // ─── Inventory ───────────────────────────────────────────
@@ -88,6 +94,8 @@ export const inventoryApi = {
   assignments: (params?: object) => api.get('/inventory/assignments/', { params }),
   assign: (data: object) => api.post('/inventory/assignments/', data),
   updateAssignment: (id: number, data: object) => api.put(`/inventory/assignments/${id}`, data),
+  onboardProduct: (data: object) => api.post('/inventory/products/onboard', data),
+  importProducts: (form: FormData) => api.post('/inventory/products/import', form, { headers: { 'Content-Type': 'multipart/form-data' } }),
 }
 
 // ─── Expenses ────────────────────────────────────────────
@@ -98,6 +106,8 @@ export const expensesApi = {
     api.post('/expenses/', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   review: (id: number, data: object) => api.put(`/expenses/${id}/review`, data),
   summary: (params?: object) => api.get('/expenses/summary/by-category', { params }),
+  onboard: (data: object) => api.post('/expenses/onboard', data),
+  importCsv: (form: FormData) => api.post('/expenses/import', form, { headers: { 'Content-Type': 'multipart/form-data' } }),
 }
 
 // ─── Customers ───────────────────────────────────────────
@@ -107,6 +117,8 @@ export const customersApi = {
   create: (data: object) => api.post('/customers/', data),
   update: (id: number, data: object) => api.put(`/customers/${id}`, data),
   history: (id: number) => api.get(`/customers/${id}/history`),
+  onboard: (data: object) => api.post('/customers/onboard', data),
+  importCsv: (form: FormData) => api.post('/customers/import', form, { headers: { 'Content-Type': 'multipart/form-data' } }),
 }
 
 // ─── Odometer ────────────────────────────────────────────

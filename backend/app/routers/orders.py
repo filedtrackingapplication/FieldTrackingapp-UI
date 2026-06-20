@@ -9,6 +9,10 @@ from app.database import get_db
 from app.models.models import Order, OrderItem, Customer, Product, User, UserRole, OrderStatus
 from app.schemas.schemas import OrderCreate, OrderUpdate, OrderOut
 from app.services.auth_service import get_current_user
+from app.services.auth_service import require_roles
+from fastapi import UploadFile, File
+import csv
+from io import StringIO
 
 router = APIRouter()
 
@@ -164,3 +168,55 @@ def order_analytics(
         "by_status": by_status,
         "avg_order_value": total_revenue / len(orders) if orders else 0,
     }
+
+
+
+@router.post('/onboard', response_model=OrderOut, status_code=201)
+def onboard_order(order_data: OrderCreate, current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.MANAGER)), db: Session = Depends(get_db)):
+    # Allow admin/manager to create orders on behalf of agents
+    return create_order(order_data, current_user, db)
+
+
+@router.post('/import')
+def import_orders(file: UploadFile = File(...), current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.MANAGER)), db: Session = Depends(get_db)):
+    raw = file.file.read()
+    try:
+        content = raw.decode('utf-8')
+    except Exception:
+        content = raw.decode('latin-1')
+    sample = content[:4096]
+    try:
+        dialect = csv.Sniffer().sniff(sample)
+        delim = dialect.delimiter
+    except Exception:
+        delim = ','
+    if content.startswith('\ufeff'):
+        content = content.lstrip('\ufeff')
+    reader = csv.DictReader(StringIO(content), delimiter=delim)
+    results = []
+    created = 0
+    rows = list(reader)
+    if not rows:
+        return {'imported': 0, 'results': [{'row': 0, 'status': 'error', 'reason': 'no rows parsed - check CSV headers/delimiter'}]}
+    for idx, row in enumerate(rows, start=1):
+        order_number = row.get('order_number')
+        customer_id = row.get('customer_id')
+        agent_id = row.get('agent_id')
+        if not (customer_id and agent_id):
+            results.append({'row': idx, 'status': 'skipped', 'reason': 'missing customer_id or agent_id'})
+            continue
+        if order_number and db.query(Order).filter(Order.order_number == order_number).first():
+            results.append({'row': idx, 'status': 'skipped', 'reason': 'duplicate order_number'})
+            continue
+        try:
+            # Minimal order creation: no items — create placeholder
+            o = Order(order_number=order_number or generate_order_number(), agent_id=int(agent_id), customer_id=int(customer_id), subtotal=0.0, discount=0.0, tax=0.0, total_amount=0.0)
+            db.add(o)
+            db.commit()
+            db.refresh(o)
+            created += 1
+            results.append({'row': idx, 'status': 'created', 'id': o.id})
+        except Exception as e:
+            db.rollback()
+            results.append({'row': idx, 'status': 'error', 'reason': str(e)})
+    return {'imported': created, 'results': results, 'parsed_rows': len(rows), 'fieldnames': reader.fieldnames or []}
