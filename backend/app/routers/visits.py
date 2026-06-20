@@ -7,6 +7,10 @@ from app.database import get_db
 from app.models.models import Visit, User, Customer, VisitStatus
 from app.schemas.schemas import VisitCreate, VisitCheckIn, VisitCheckOut, VisitOut
 from app.services.auth_service import get_current_user
+from app.services.auth_service import require_roles
+from fastapi import UploadFile, File
+import csv
+from io import StringIO
 
 router = APIRouter()
 
@@ -154,3 +158,71 @@ def visits_today_summary(
         "planned": planned,
         "date": today.isoformat(),
     }
+
+
+
+@router.post('/onboard', response_model=VisitOut, status_code=201)
+def onboard_visit(
+    visit_data: VisitCreate,
+    current_user: User = Depends(require_roles("ADMIN", "MANAGER")),
+    db: Session = Depends(get_db)
+):
+    # Allow admin/manager to create visits with explicit agent_id
+    v = Visit(
+        agent_id=visit_data.agent_id,
+        customer_id=visit_data.customer_id,
+        visit_date=visit_data.visit_date,
+        purpose=visit_data.purpose,
+        notes=visit_data.notes,
+        status=visit_data.status if hasattr(visit_data, 'status') else VisitStatus.PLANNED,
+    )
+    db.add(v)
+    db.commit()
+    db.refresh(v)
+    return v
+
+
+@router.post('/import')
+def import_visits(file: UploadFile = File(...), current_user: User = Depends(require_roles("ADMIN", "MANAGER")), db: Session = Depends(get_db)):
+    raw = file.file.read()
+    try:
+        content = raw.decode('utf-8')
+    except Exception:
+        content = raw.decode('latin-1')
+    sample = content[:4096]
+    try:
+        dialect = csv.Sniffer().sniff(sample)
+        delim = dialect.delimiter
+    except Exception:
+        delim = ','
+    if content.startswith('\ufeff'):
+        content = content.lstrip('\ufeff')
+    reader = csv.DictReader(StringIO(content), delimiter=delim)
+    results = []
+    created = 0
+    rows = list(reader)
+    if not rows:
+        return {'imported': 0, 'results': [{'row': 0, 'status': 'error', 'reason': 'no rows parsed - check CSV headers/delimiter'}]}
+    for idx, row in enumerate(rows, start=1):
+        agent_id = row.get('agent_id')
+        customer_id = row.get('customer_id')
+        visit_date = row.get('visit_date')
+        if not (agent_id and customer_id and visit_date):
+            results.append({'row': idx, 'status': 'skipped', 'reason': 'missing agent_id/customer_id/visit_date'})
+            continue
+        # dedupe by agent+customer+date
+        existing = db.query(Visit).filter(Visit.agent_id == int(agent_id), Visit.customer_id == int(customer_id), Visit.visit_date == visit_date).first()
+        if existing:
+            results.append({'row': idx, 'status': 'skipped', 'reason': 'duplicate visit'})
+            continue
+        try:
+            v = Visit(agent_id=int(agent_id), customer_id=int(customer_id), visit_date=visit_date, purpose=row.get('purpose'), notes=row.get('notes'))
+            db.add(v)
+            db.commit()
+            db.refresh(v)
+            created += 1
+            results.append({'row': idx, 'status': 'created', 'id': v.id})
+        except Exception as e:
+            db.rollback()
+            results.append({'row': idx, 'status': 'error', 'reason': str(e)})
+    return {'imported': created, 'results': results, 'parsed_rows': len(rows), 'fieldnames': reader.fieldnames or []}

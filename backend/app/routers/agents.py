@@ -6,6 +6,9 @@ from app.database import get_db
 from app.models.models import User, UserRole, AgentStatus
 from app.schemas.schemas import UserCreate, UserOut, UserUpdate, UserWithLocation
 from app.services.auth_service import get_current_user, require_roles, hash_password
+from fastapi import UploadFile, File
+import csv
+from io import StringIO
 
 router = APIRouter()
 
@@ -102,6 +105,92 @@ def deactivate_agent(
     agent.is_active = False
     db.commit()
     return {"message": "Agent deactivated"}
+
+
+
+@router.post('/onboard', response_model=UserOut, status_code=201)
+def onboard_agent(
+    user_data: UserCreate,
+    current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.MANAGER)),
+    db: Session = Depends(get_db)
+):
+    return create_agent(user_data, current_user, db)
+
+
+@router.post('/import')
+def import_agents(
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.MANAGER)),
+    db: Session = Depends(get_db)
+):
+    raw = file.file.read()
+    try:
+        content = raw.decode('utf-8')
+    except Exception:
+        content = raw.decode('latin-1')
+    # Robust delimiter detection using a content sample
+    sample = content[:4096]
+    try:
+        dialect = csv.Sniffer().sniff(sample)
+        delim = dialect.delimiter
+    except Exception:
+        delim = ','
+    # Strip BOM if present
+    if content.startswith('\ufeff'):
+        content = content.lstrip('\ufeff')
+    reader = csv.DictReader(StringIO(content), delimiter=delim)
+    results = []
+    created = 0
+    # normalize fieldnames to accept common aliases
+    if reader.fieldnames:
+        normalized = []
+        for fn in reader.fieldnames:
+            key = fn.strip().lower()
+            if key in ('name', 'full_name'):
+                normalized.append('full_name')
+            elif key in ('mobile', 'phone_number'):
+                normalized.append('phone')
+            elif key == 'email_address':
+                normalized.append('email')
+            else:
+                normalized.append(fn)
+        reader.fieldnames = normalized
+
+    rows = list(reader)
+    if not rows:
+        return {'imported': 0, 'parsed_rows': 0, 'fieldnames': reader.fieldnames or [], 'results': [{'row': 0, 'status': 'error', 'reason': 'no rows parsed - check CSV headers/delimiter'}]}
+    for idx, row in enumerate(rows, start=1):
+        email = (row.get('email') or '').strip()
+        phone = (row.get('phone') or '').strip()
+        if not email and not phone:
+            results.append({'row': idx, 'status': 'skipped', 'reason': 'missing email and phone'})
+            continue
+        if email and db.query(User).filter(User.email == email).first():
+            results.append({'row': idx, 'status': 'skipped', 'reason': 'duplicate email'})
+            continue
+        if phone and db.query(User).filter(User.phone == phone).first():
+            results.append({'row': idx, 'status': 'skipped', 'reason': 'duplicate phone'})
+            continue
+        try:
+            pwd = row.get('password') or 'TempPass123'
+            user = User(
+                full_name=row.get('full_name') or row.get('name') or 'Agent',
+                email=email or None,
+                phone=phone or None,
+                employee_id=row.get('employee_id') or None,
+                role=row.get('role') or None,
+                hashed_password=hash_password(pwd)
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+            created += 1
+            results.append({'row': idx, 'status': 'created', 'id': user.id})
+        except Exception as e:
+            db.rollback()
+            results.append({'row': idx, 'status': 'error', 'reason': str(e)})
+    resp = {'imported': created, 'results': results, 'parsed_rows': len(rows), 'fieldnames': reader.fieldnames or []}
+    return resp
 
 
 @router.get("/{agent_id}/stats")

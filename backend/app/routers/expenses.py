@@ -9,6 +9,9 @@ from app.models.models import Expense, User, UserRole, ExpenseStatus
 from app.schemas.schemas import ExpenseCreate, ExpenseReview, ExpenseOut
 from app.services.auth_service import get_current_user, require_roles
 from app.config import settings
+from fastapi import UploadFile as FU, File as FF
+import csv
+from io import StringIO
 
 router = APIRouter()
 
@@ -134,3 +137,56 @@ def expense_summary(
 
     results = query.group_by(Expense.category).all()
     return [{"category": r[0].value, "total": r[1]} for r in results]
+
+
+
+@router.post('/onboard', response_model=ExpenseOut, status_code=201)
+def onboard_expense(expense: ExpenseCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Allow manager/admin to create on behalf
+    return create_expense(category=expense.category, amount=expense.amount, expense_date=expense.expense_date, description=expense.description, latitude=expense.latitude, longitude=expense.longitude, receipt=None, current_user=current_user, db=db)
+
+
+@router.post('/import')
+def import_expenses(file: FU = FF(...), current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.MANAGER)), db: Session = Depends(get_db)):
+    try:
+        raw = file.file.read()
+        try:
+            content = raw.decode('utf-8')
+        except Exception:
+            content = raw.decode('latin-1')
+        sample = content[:4096]
+        try:
+            dialect = csv.Sniffer().sniff(sample)
+            delim = dialect.delimiter
+        except Exception:
+            delim = ','
+        if content.startswith('\ufeff'):
+            content = content.lstrip('\ufeff')
+        reader = csv.DictReader(StringIO(content), delimiter=delim)
+        results = []
+        created = 0
+        rows = list(reader)
+        if not rows:
+            return {'imported': 0, 'results': [{'row': 0, 'status': 'error', 'reason': 'no rows parsed - check CSV headers/delimiter'}]}
+        for idx, row in enumerate(rows, start=1):
+            agent_id = row.get('agent_id')
+            amount = row.get('amount')
+            expense_date = row.get('expense_date')
+            if not (agent_id and amount and expense_date):
+                results.append({'row': idx, 'status': 'skipped', 'reason': 'missing agent_id/amount/expense_date'})
+                continue
+            # 'reference' field not present on Expense model in DB; skip dedupe
+            ref = row.get('reference')
+            try:
+                exp = Expense(agent_id=int(agent_id), category=row.get('category') or 'misc', amount=float(amount), expense_date=expense_date, description=row.get('description'))
+                db.add(exp)
+                db.commit()
+                db.refresh(exp)
+                created += 1
+                results.append({'row': idx, 'status': 'created', 'id': exp.id})
+            except Exception as e:
+                db.rollback()
+                results.append({'row': idx, 'status': 'error', 'reason': str(e)})
+        return {'imported': created, 'results': results, 'parsed_rows': len(rows), 'fieldnames': reader.fieldnames or []}
+    except Exception as e:
+        return {'imported': 0, 'results': [{'row': 0, 'status': 'error', 'reason': str(e)}], 'parsed_rows': 0, 'fieldnames': []}

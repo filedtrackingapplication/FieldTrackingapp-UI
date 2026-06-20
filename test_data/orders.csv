@@ -1,0 +1,2 @@
+order_number,customer_id,agent_id,total,notes
+ORD-TEST,1,1,100.00,Test order

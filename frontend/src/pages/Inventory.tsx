@@ -4,6 +4,8 @@ import type { Inventory, Product, InventoryAssignment } from '../types'
 import DataTable from '../components/DataTable'
 import { Package, AlertTriangle, Truck } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useState, useRef } from 'react'
+import { inventoryApi } from '../services/api'
 
 export default function InventoryPage() {
   const [inventory, setInventory] = useState<Inventory[]>([])
@@ -11,6 +13,10 @@ export default function InventoryPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [tab, setTab] = useState<'warehouse' | 'assignments' | 'products'>('warehouse')
   const [loading, setLoading] = useState(true)
+  const [csvFile, setCsvFile] = useState<File | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
+  const [importResult, setImportResult] = useState<any | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -138,6 +144,16 @@ export default function InventoryPage() {
           <button className="btn-primary flex items-center gap-2">
             <Truck className="w-4 h-4" /> Assign to Truck
           </button>
+          <label className="btn-outline cursor-pointer">
+            Import Products
+            <input ref={el=>inputRef.current=el} type="file" accept=".csv" className="hidden" onChange={(e)=>setCsvFile(e.target.files?.[0]||null)} />
+          </label>
+          <button className="btn" onClick={async ()=>{
+            if(!csvFile) return toast.error('Select CSV')
+            setUploadProgress(0); setImportResult(null)
+            try{ await new Promise<void>((resolve,reject)=>{ const xhr=new XMLHttpRequest(); xhr.open('POST','/api/inventory/products/import'); const token=localStorage.getItem('access_token'); if(token) xhr.setRequestHeader('Authorization', `Bearer ${token}`); xhr.upload.onprogress=(e)=>{ if(e.lengthComputable) setUploadProgress(Math.round((e.loaded/e.total)*100)) }; xhr.onload=()=>{ if(xhr.status>=200&&xhr.status<300){ setImportResult(JSON.parse(xhr.responseText)); toast.success('Import done'); setCsvFile(null); resolve() } else reject() }; xhr.onerror=()=>reject(); const fd=new FormData(); fd.append('file', csvFile); xhr.send(fd) }) }catch(e){ toast.error('Import failed') } finally{ setUploadProgress(null) }
+          }}>Upload</button>
+          <button className="btn ghost" onClick={()=>{ const csv='sku,name,category,warehouse_stock\nSKU1,Product A,category1,100\n'; const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='products_template.csv'; a.click(); URL.revokeObjectURL(url) }}>Download Template</button>
         </div>
       </div>
 
@@ -179,6 +195,8 @@ export default function InventoryPage() {
           <DataTable columns={productCols} data={products} emptyMessage="No products" />
         )}
       </div>
+      {uploadProgress !== null && <div className="mt-2">Uploading: {uploadProgress}%</div>}
+      {importResult && (<div className="mt-3 p-2 border rounded text-sm">Imported: {importResult.imported}<div className="max-h-36 overflow-auto"><table className="w-full text-xs"><tbody>{importResult.results.map((r:any)=>(<tr key={r.row}><td className="pr-2">{r.row}</td><td className="pr-2">{r.status}</td><td>{r.reason||r.id||''}</td></tr>))}</tbody></table></div></div>)}
     </div>
   )
 }
