@@ -15,6 +15,7 @@ import Customers from './pages/Customers'
 import Odometer from './pages/Odometer'
 import PunchInOut from './pages/PunchInOut'
 import Reports from './pages/Reports'
+import AdminAttendance from './pages/AdminAttendance'
 import { useAuthStore } from './store/authStore'
 
 /** Listens for 401 events fired by the axios interceptor and redirects via
@@ -66,6 +67,7 @@ export default function App() {
           <Route path="expenses" element={<Expenses />} />
           <Route path="customers" element={<Customers />} />
           <Route path="odometer" element={<Odometer />} />
+          <Route path="admin/attendance" element={<AdminAttendance />} />
           <Route path="reports" element={<Reports />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

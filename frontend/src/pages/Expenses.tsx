@@ -1,13 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { expensesApi } from '../services/api'
 import type { Expense, ExpenseStatus } from '../types'
 import DataTable from '../components/DataTable'
 import { DollarSign, CheckCircle, Clock, XCircle, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../store/authStore'
-import { useRef } from 'react'
-import { expensesApi } from '../services/api'
-import { useState } from 'react'
+
 
 const statusBadge: Record<ExpenseStatus, string> = {
   pending: 'badge-yellow',
@@ -26,6 +24,10 @@ export default function Expenses() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const { user } = useAuthStore()
+  const [csvFile, setCsvFile] = useState<File | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
+  const [importResult, setImportResult] = useState<any | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
 
   const load = () => {
     setLoading(true)

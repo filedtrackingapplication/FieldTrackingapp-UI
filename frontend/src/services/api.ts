@@ -134,3 +134,10 @@ export const dashboardApi = {
   stats: () => api.get('/dashboard/stats'),
   agentSummary: (id: number) => api.get(`/dashboard/agent-summary/${id}`),
 }
+
+// ─── Admin Attendance ─────────────────────────────────────
+export const adminAttendanceApi = {
+  list: (params?: object) => api.get('/admin/attendance/', { params }),
+  adjust: (id: number, data: object) => api.put(`/admin/attendance/${id}`, data),
+  export: (params?: object) => api.post('/admin/attendance/export', params, { responseType: 'blob' }),
+}

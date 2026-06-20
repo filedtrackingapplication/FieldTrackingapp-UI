@@ -4,7 +4,7 @@ import type { Customer } from '../types'
 import DataTable from '../components/DataTable'
 import { UserCheck, Search, Plus, MapPin } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { customersApi } from '../services/api'
+
 
 export default function Customers() {
   const [customers, setCustomers] = useState<Customer[]>([])

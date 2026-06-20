@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { agentsApi } from '../services/api'
 import type { User } from '../types'
 import DataTable from '../components/DataTable'
 import { UserPlus, Search, Wifi, WifiOff } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { agentsApi } from '../services/api'
-import { useRef } from 'react'
+
 
 const roleColors: Record<string, string> = {
   admin: 'badge-red',

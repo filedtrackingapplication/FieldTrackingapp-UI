@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { inventoryApi } from '../services/api'
 import type { Inventory, Product, InventoryAssignment } from '../types'
 import DataTable from '../components/DataTable'
 import { Package, AlertTriangle, Truck } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useState, useRef } from 'react'
-import { inventoryApi } from '../services/api'
+
 
 export default function InventoryPage() {
   const [inventory, setInventory] = useState<Inventory[]>([])
