@@ -36,3 +36,5 @@ pytz==2024.1
 
 # Observability
 prometheus-fastapi-instrumentator==7.0.0
+pytest==7.4.0
+pytest-cov==4.1.0
