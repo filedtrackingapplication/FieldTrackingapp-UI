@@ -67,11 +67,18 @@ export const visitsApi = {
   list: (params?: object) => api.get('/visits/', { params }),
   get: (id: number) => api.get(`/visits/${id}`),
   create: (data: object) => api.post('/visits/', data),
+  update: (id: number | string, data: object) => api.put(`/visits/${id}`, data),
   checkIn: (id: number, data: object) => api.post(`/visits/${id}/check-in`, data),
   checkOut: (id: number, data: object) => api.post(`/visits/${id}/check-out`, data),
   summaryToday: () => api.get('/visits/summary/today'),
   onboard: (data: object) => api.post('/visits/onboard', data),
   importCsv: (form: FormData) => api.post('/visits/import', form, { headers: { 'Content-Type': 'multipart/form-data' } }),
+}
+
+// Visit metadata
+export const visitMetaApi = {
+  statuses: () => api.get('/visits/meta/statuses'),
+  types: () => api.get('/visits/meta/types'),
 }
 
 // ─── Orders ──────────────────────────────────────────────

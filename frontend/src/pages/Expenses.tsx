@@ -139,7 +139,7 @@ export default function Expenses() {
             accept=".csv"
             onFile={(f)=>setCsvFile(f)}
             onUpload={async ()=>{
-              if(!csvFile) return toast.error('Select CSV')
+              if(!csvFile) { toast.error('Select CSV'); return }
               setUploadProgress(0); setImportResult(null)
               try{ await new Promise<void>((resolve,reject)=>{ const xhr=new XMLHttpRequest(); xhr.open('POST','/api/expenses/import'); const token=localStorage.getItem('access_token'); if(token) xhr.setRequestHeader('Authorization', `Bearer ${token}`); xhr.upload.onprogress=(e)=>{ if(e.lengthComputable) setUploadProgress(Math.round((e.loaded/e.total)*100)) }; xhr.onload=()=>{ if(xhr.status>=200&&xhr.status<300){ setImportResult(JSON.parse(xhr.responseText)); toast.success('Import done'); setCsvFile(null); resolve() } else reject() }; xhr.onerror=()=>reject(); const fd=new FormData(); fd.append('file', csvFile||''); xhr.send(fd) }) }catch(e){ toast.error('Import failed') } finally{ setUploadProgress(null) }
             }}

@@ -15,9 +15,45 @@ export default function ImportTemplateButtons({ accept='.csv', onFile, onUpload,
     <div className="flex items-center gap-2">
       <label className="btn-primary flex items-center gap-2 cursor-pointer">
         Import CSV
-        <input ref={el=>inputRef.current=el} type="file" accept={accept} className="hidden" onChange={(e)=>onFile?.(e.target.files?.[0]||null)} />
+        <input
+          ref={el=>inputRef.current=el}
+          type="file"
+          accept={accept}
+          className="hidden"
+          onChange={(e)=>{
+            const file = e.target.files?.[0]
+            if(!file){ onFile?.(null); return }
+            // basic type check
+            if(!file.name.toLowerCase().endsWith('.csv')){
+              toast.error('Please select a CSV file')
+              onFile?.(null)
+              return
+            }
+            // validate columns against templateContent header line
+            const reader = new FileReader()
+            reader.onload = () => {
+              const text = String(reader.result || '')
+              const firstLine = text.split(/\r?\n/)[0] || ''
+              const templateHeader = (templateContent || '').split(/\r?\n/)[0] || ''
+              const normalize = (s:string) => s.split(',').map(x=>x.trim().toLowerCase()).join(',')
+              if(normalize(firstLine) !== normalize(templateHeader)){
+                toast.error(`CSV columns do not match template: expected ${templateHeader}`)
+                onFile?.(null)
+                return
+              }
+              onFile?.(file)
+            }
+            reader.onerror = () => { toast.error('Failed to read file'); onFile?.(null) }
+            reader.readAsText(file)
+          }}
+        />
       </label>
       <button className="btn-primary" onClick={async ()=>{
+        // if no file selected, open file picker first
+        if(!inputRef.current?.files || inputRef.current.files.length === 0){
+          inputRef.current?.click()
+          return
+        }
         if(onUpload){
           try{ await onUpload() }catch(e){ toast.error('Import failed') }
         } else {

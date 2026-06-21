@@ -95,7 +95,7 @@ export default function Customers() {
               setImportError(null)
               setImportResult(null)
               setUploadProgress(0)
-              if (!csvFile) return toast.error('Select a CSV file first')
+              if (!csvFile) { toast.error('Select a CSV file first'); return }
               try {
                 await new Promise<void>((resolve, reject) => {
                   const xhr = new XMLHttpRequest()

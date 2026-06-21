@@ -15,6 +15,23 @@ from io import StringIO
 router = APIRouter()
 
 
+@router.get('/meta/statuses')
+def visit_statuses():
+    """Return available visit statuses"""
+    return [{"value": s.value, "label": s.name.replace('_', ' ').title()} for s in VisitStatus]
+
+
+@router.get('/meta/types')
+def visit_types():
+    """Return available visit types (static list for now)"""
+    types = [
+        {"value": "customer_followup", "label": "Customer Followup"},
+        {"value": "order_taking", "label": "Order Taking"},
+        {"value": "payment_collection", "label": "Payment Collection"},
+    ]
+    return types
+
+
 @router.post("/", response_model=VisitOut, status_code=201)
 def create_visit(
     visit_data: VisitCreate,
@@ -32,7 +49,11 @@ def create_visit(
         purpose=visit_data.purpose,
         notes=visit_data.notes,
         status=VisitStatus.PLANNED,
+        check_in_time=visit_data.start_datetime,
+        check_out_time=visit_data.end_datetime,
+        duration_minutes=visit_data.duration_minutes,
     )
+    
     db.add(visit)
     db.commit()
     db.refresh(visit)
@@ -80,7 +101,7 @@ def get_visit(
     return visit
 
 
-@router.post("/{visit_id}/check-in", response_model=VisitOut)
+@router.post("/{visit_id}/check-in", response_model=VisitOut) 
 def check_in(
     visit_id: int,
     data: VisitCheckIn,
@@ -180,6 +201,41 @@ def onboard_visit(
     db.commit()
     db.refresh(v)
     return v
+
+
+@router.put("/{visit_id}", response_model=VisitOut)
+def update_visit(
+    visit_id: int,
+    visit_data: VisitCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    visit = db.query(Visit).filter(Visit.id == visit_id).first()
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+
+    # allow owner or admin/manager to update
+    if visit.agent_id != current_user.id and current_user.role not in [UserRole.MANAGER, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Not authorized to update this visit")
+
+    # update allowed fields
+    visit.customer_id = visit_data.customer_id
+    if hasattr(visit_data, 'agent_id') and visit_data.agent_id:
+        visit.agent_id = visit_data.agent_id
+    visit.visit_date = visit_data.visit_date
+    visit.purpose = visit_data.purpose
+    visit.notes = visit_data.notes
+    if hasattr(visit_data, 'status') and visit_data.status:
+        try:
+            visit.status = VisitStatus(visit_data.status)
+        except Exception:
+            pass
+    if hasattr(visit_data, 'duration_minutes'):
+        visit.duration_minutes = getattr(visit_data, 'duration_minutes')
+
+    db.commit()
+    db.refresh(visit)
+    return visit
 
 
 @router.post('/import')

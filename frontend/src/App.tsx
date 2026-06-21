@@ -1,35 +1,40 @@
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import Layout from './components/Layout'
 import OfflineIndicator from './components/OfflineIndicator'
 import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
-import LiveTracking from './pages/LiveTracking'
-import Agents from './pages/Agents'
-import Visits from './pages/Visits'
-import Orders from './pages/Orders'
-import InventoryPage from './pages/Inventory'
-import Expenses from './pages/Expenses'
-import Customers from './pages/Customers'
-import Odometer from './pages/Odometer'
-import PunchInOut from './pages/PunchInOut'
-import Reports from './pages/Reports'
-import AdminAttendance from './pages/AdminAttendance'
 import { useAuthStore } from './store/authStore'
+
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const LiveTracking = lazy(() => import('./pages/LiveTracking'))
+const Agents = lazy(() => import('./features/agents/Agents'))
+const Visits = lazy(() => import('./features/visits/Visits'))
+const Orders = lazy(() => import('./pages/Orders'))
+const InventoryPage = lazy(() => import('./pages/Inventory'))
+const Expenses = lazy(() => import('./pages/Expenses'))
+const Customers = lazy(() => import('./pages/Customers'))
+const Odometer = lazy(() => import('./pages/Odometer'))
+const PunchInOut = lazy(() => import('./pages/PunchInOut'))
+const Reports = lazy(() => import('./pages/Reports'))
+const AdminAttendance = lazy(() => import('./pages/AdminAttendance'))
 
 /** Listens for 401 events fired by the axios interceptor and redirects via
  *  React Router (no full-page reload, preserving Zustand state). */
 function AuthGuard() {
   const navigate = useNavigate()
-  const { logout } = useAuthStore()
+  const { clearAuth } = useAuthStore()
   useEffect(() => {
     const handler = () => {
-      logout().finally(() => navigate('/login', { replace: true }))
+      // Perform a local-only clear when a 401 occurs to avoid calling
+      // the backend logout endpoint (which may itself return 401 and
+      // trigger a loop). Then navigate to login.
+      clearAuth()
+      navigate('/login', { replace: true })
     }
     window.addEventListener('auth:unauthorized', handler)
     return () => window.removeEventListener('auth:unauthorized', handler)
-  }, [navigate, logout])
+  }, [navigate, clearAuth])
   return null
 }
 
@@ -57,18 +62,18 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Dashboard />} />
-          <Route path="tracking" element={<LiveTracking />} />
-          <Route path="agents" element={<Agents />} />
-          <Route path="punch" element={<PunchInOut />} />
-          <Route path="visits" element={<Visits />} />
-          <Route path="orders" element={<Orders />} />
-          <Route path="inventory" element={<InventoryPage />} />
-          <Route path="expenses" element={<Expenses />} />
-          <Route path="customers" element={<Customers />} />
-          <Route path="odometer" element={<Odometer />} />
-          <Route path="admin/attendance" element={<AdminAttendance />} />
-          <Route path="reports" element={<Reports />} />
+          <Route index element={<Suspense fallback={<div className="p-8">Loading...</div>}><Dashboard /></Suspense>} />
+          <Route path="tracking" element={<Suspense fallback={<div className="p-8">Loading...</div>}><LiveTracking /></Suspense>} />
+          <Route path="agents" element={<Suspense fallback={<div className="p-8">Loading...</div>}><Agents /></Suspense>} />
+          <Route path="punch" element={<Suspense fallback={<div className="p-8">Loading...</div>}><PunchInOut /></Suspense>} />
+          <Route path="visits" element={<Suspense fallback={<div className="p-8">Loading...</div>}><Visits /></Suspense>} />
+          <Route path="orders" element={<Suspense fallback={<div className="p-8">Loading...</div>}><Orders /></Suspense>} />
+          <Route path="inventory" element={<Suspense fallback={<div className="p-8">Loading...</div>}><InventoryPage /></Suspense>} />
+          <Route path="expenses" element={<Suspense fallback={<div className="p-8">Loading...</div>}><Expenses /></Suspense>} />
+          <Route path="customers" element={<Suspense fallback={<div className="p-8">Loading...</div>}><Customers /></Suspense>} />
+          <Route path="odometer" element={<Suspense fallback={<div className="p-8">Loading...</div>}><Odometer /></Suspense>} />
+          <Route path="admin/attendance" element={<Suspense fallback={<div className="p-8">Loading...</div>}><AdminAttendance /></Suspense>} />
+          <Route path="reports" element={<Suspense fallback={<div className="p-8">Loading...</div>}><Reports /></Suspense>} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

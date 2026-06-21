@@ -202,6 +202,9 @@ class VisitCreate(BaseModel):
     visit_date: date
     purpose: Optional[str] = None
     notes: Optional[str] = None
+    start_datetime: datetime
+    end_datetime: datetime
+    duration_minutes: datetime
 
 
 class VisitCheckIn(BaseModel):
@@ -222,13 +225,13 @@ class VisitOut(BaseModel):
     agent_id: int
     customer_id: int
     visit_date: date
-    check_in_time: Optional[datetime] = None
+    check_in_time: datetime
     check_in_lat: Optional[float] = None
     check_in_lng: Optional[float] = None
-    check_out_time: Optional[datetime] = None
+    check_out_time: datetime
     check_out_lat: Optional[float] = None
     check_out_lng: Optional[float] = None
-    duration_minutes: Optional[int] = None
+    duration_minutes: int
     status: VisitStatus
     purpose: Optional[str] = None
     notes: Optional[str] = None
