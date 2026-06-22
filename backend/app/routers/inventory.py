@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date
@@ -9,11 +9,11 @@ from app.models.models import (
     Product, User, UserRole
 )
 from app.schemas.schemas import (
-    ProductCreate, ProductOut,
+    ProductCreate, ProductUpdate, ProductOut,
     InventoryOut, InventoryUpdate,
     InventoryAssignmentCreate, InventoryAssignmentUpdate, InventoryAssignmentOut,
 )
-from app.services.auth_service import get_current_user, require_roles
+from app.services.auth_service import get_current_user, get_optional_current_user, require_roles
 from fastapi import UploadFile, File
 import csv
 from io import StringIO
@@ -29,6 +29,19 @@ def create_product(
     current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.MANAGER)),
     db: Session = Depends(get_db)
 ):
+    # Debug log: capture incoming Authorization header and current_user info
+    try:
+        auth_header = (Request.scope.get('headers') if False else None)
+    except Exception:
+        auth_header = None
+    # Best-effort: read Authorization from the Starlette Request if available via dependency injection
+    # (we don't have the Request object here normally) — fallback: log current_user
+    # Temporary debug print
+    try:
+        print(f"[DEBUG][create_product] current_user.id={getattr(current_user, 'id', None)} role={getattr(current_user, 'role', None)}")
+    except Exception:
+        print("[DEBUG][create_product] current_user not available")
+
     if db.query(Product).filter(Product.sku == data.sku).first():
         raise HTTPException(status_code=400, detail="SKU already exists")
     product = Product(**data.model_dump())
@@ -46,17 +59,66 @@ def create_product(
 def list_products(
     category: Optional[str] = None,
     search: Optional[str] = None,
+    include_inactive: bool = False,
     skip: int = 0,
     limit: int = 100,
+    current_user: User = Depends(get_optional_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        query = db.query(Product)
+        if not include_inactive:
+            query = query.filter(Product.is_active == True)
+        if category:
+            query = query.filter(Product.category == category)
+        if search:
+            query = query.filter(Product.name.ilike(f"%{search}%") | Product.sku.ilike(f"%{search}%"))
+        return query.order_by(Product.updated_at.desc()).offset(skip).limit(limit).all()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/products/{product_id}", response_model=ProductOut)
+def get_product(
+    product_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    query = db.query(Product).filter(Product.is_active == True)
-    if category:
-        query = query.filter(Product.category == category)
-    if search:
-        query = query.filter(Product.name.ilike(f"%{search}%") | Product.sku.ilike(f"%{search}%"))
-    return query.offset(skip).limit(limit).all()
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product
+
+
+@router.put("/products/{product_id}", response_model=ProductOut)
+def update_product(
+    product_id: int,
+    data: ProductUpdate,
+    current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.MANAGER)),
+    db: Session = Depends(get_db)
+):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(product, field, value)
+    db.commit()
+    db.refresh(product)
+    return product
+
+
+@router.delete("/products/{product_id}", status_code=204)
+def delete_product(
+    product_id: int,
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+    db: Session = Depends(get_db)
+):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    product.is_active = False
+    db.commit()
+    return None
 
 
 # ─── Warehouse Inventory ─────────────────────────────────────

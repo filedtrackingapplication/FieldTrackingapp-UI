@@ -10,7 +10,8 @@ const Dashboard = lazy(() => import('./pages/Dashboard'))
 const LiveTracking = lazy(() => import('./pages/LiveTracking'))
 const Agents = lazy(() => import('./features/agents/Agents'))
 const Visits = lazy(() => import('./features/visits/Visits'))
-const Orders = lazy(() => import('./pages/Orders'))
+const Orders = lazy(() => import('./features/orders/Orders'))
+const ProductsPage = lazy(() => import('./features/products/Products'))
 const InventoryPage = lazy(() => import('./pages/Inventory'))
 const Expenses = lazy(() => import('./pages/Expenses'))
 const Customers = lazy(() => import('./pages/Customers'))
@@ -68,6 +69,7 @@ export default function App() {
           <Route path="punch" element={<Suspense fallback={<div className="p-8">Loading...</div>}><PunchInOut /></Suspense>} />
           <Route path="visits" element={<Suspense fallback={<div className="p-8">Loading...</div>}><Visits /></Suspense>} />
           <Route path="orders" element={<Suspense fallback={<div className="p-8">Loading...</div>}><Orders /></Suspense>} />
+          <Route path="products" element={<Suspense fallback={<div className="p-8">Loading...</div>}><ProductsPage /></Suspense>} />
           <Route path="inventory" element={<Suspense fallback={<div className="p-8">Loading...</div>}><InventoryPage /></Suspense>} />
           <Route path="expenses" element={<Suspense fallback={<div className="p-8">Loading...</div>}><Expenses /></Suspense>} />
           <Route path="customers" element={<Suspense fallback={<div className="p-8">Loading...</div>}><Customers /></Suspense>} />

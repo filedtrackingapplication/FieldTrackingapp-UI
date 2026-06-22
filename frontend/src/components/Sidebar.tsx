@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, MapPin, Users, ClipboardList, ShoppingCart,
-  Package, DollarSign, UserCheck, Gauge, Clock, BarChart3, Truck,
+  Package, DollarSign, UserCheck, Gauge, Clock, BarChart3, Truck, Box,
 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import clsx from 'clsx'
@@ -13,6 +13,7 @@ const navItems = [
   { to: '/punch', icon: Clock, label: 'Punch In/Out', roles: ['field_agent', 'driver', 'manager'] },
   { to: '/visits', icon: ClipboardList, label: 'Visits', roles: ['admin', 'manager', 'field_agent', 'driver'] },
   { to: '/orders', icon: ShoppingCart, label: 'Orders', roles: ['admin', 'manager', 'field_agent', 'driver'] },
+  { to: '/products', icon: Box, label: 'Products', roles: ['admin', 'manager', 'field_agent', 'driver'] },
   { to: '/inventory', icon: Package, label: 'Inventory', roles: ['admin', 'manager', 'driver'] },
   { to: '/expenses', icon: DollarSign, label: 'Expenses', roles: ['admin', 'manager', 'field_agent', 'driver'] },
   { to: '/customers', icon: UserCheck, label: 'Customers', roles: ['admin', 'manager', 'field_agent', 'driver'] },
