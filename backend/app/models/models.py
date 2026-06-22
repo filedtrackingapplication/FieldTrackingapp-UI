@@ -94,6 +94,23 @@ class User(Base):
     inventory_assignments = relationship("InventoryAssignment", back_populates="agent")
 
 
+class Agent(Base):
+    """Legacy agents table kept for compatibility with older migrations/endpoints."""
+    __tablename__ = "agents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    employee_id = Column(String(50), nullable=True)
+    full_name = Column(String(100), nullable=True)
+    email = Column(String(100), nullable=True)
+    phone = Column(String(20), nullable=True)
+    role = Column(SAEnum(UserRole), default=UserRole.FIELD_AGENT)
+    status = Column(SAEnum(AgentStatus), default=AgentStatus.ACTIVE)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", foreign_keys=[user_id])
+
+
 class LocationLog(Base):
     __tablename__ = "location_logs"
 

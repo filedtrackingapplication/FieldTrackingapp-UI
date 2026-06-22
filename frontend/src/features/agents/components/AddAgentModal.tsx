@@ -60,7 +60,6 @@ export default function AddAgentModal({
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
   }
-
   const handleBlur = (fieldName: keyof AddAgentFormData) => {
     setTouched(prev => new Set([...prev, fieldName]))
     const error = validateField(fieldName, formData[fieldName])
@@ -102,7 +101,11 @@ export default function AddAgentModal({
 
   // Ensure form is cleared whenever modal is opened
   useEffect(() => {
-    if (isOpen) resetForm()
+    if (isOpen) {
+      resetForm()
+      // extra guard: explicitly clear sensitive fields to discourage browser autofill
+      setFormData(prev => ({ ...prev, employee_id: '', password: '' }))
+    }
   }, [isOpen])
 
   // Auto-focus the first visible input when modal opens
@@ -218,6 +221,7 @@ export default function AddAgentModal({
                     onBlur={() => handleBlur('employee_id')}
                     className="w-full px-3 py-2 border rounded-lg"
                     autoComplete="off"
+                    inputMode="text"
                   />
                   {errors.employee_id && <p className="text-sm text-red-500">{errors.employee_id}</p>}
                 </div>
@@ -235,7 +239,7 @@ export default function AddAgentModal({
                   onChange={handleChange}
                   onBlur={() => handleBlur('full_name')}
                   className="w-full px-3 py-2 border rounded-lg"
-                  autoComplete="off"
+                  autoComplete="name"
                 />
                 {errors.full_name && (
                   <p className="text-sm text-red-500">{errors.full_name}</p>
@@ -254,7 +258,7 @@ export default function AddAgentModal({
                   onBlur={() => handleBlur('email')}
                   readOnly={mode === 'edit'}
                   className={`w-full px-3 py-2 border rounded-lg ${mode === 'edit' ? 'bg-gray-100' : ''}`}
-                  autoComplete="off"
+                  autoComplete="email"
                 />
                 {errors.email && (
                   <p className="text-sm text-red-500">{errors.email}</p>
@@ -272,6 +276,7 @@ export default function AddAgentModal({
                   onChange={handleChange}
                   onBlur={() => handleBlur('phone')}
                   className="w-full px-3 py-2 border rounded-lg"
+                  autoComplete="tel"
                 />
                 {errors.phone && (
                   <p className="text-sm text-red-500">{errors.phone}</p>
@@ -289,6 +294,7 @@ export default function AddAgentModal({
                     onChange={handleChange}
                     onBlur={() => handleBlur('password')}
                     className="w-full px-3 py-2 border rounded-lg"
+                    autoComplete="new-password"
                   />
                   {errors.password && <p className="text-sm text-red-500">{errors.password}</p>}
                 </div>
