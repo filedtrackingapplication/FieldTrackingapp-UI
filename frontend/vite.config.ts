@@ -16,4 +16,25 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    minify: 'terser',
+    terserOptions: {
+      compress: { drop_console: true },
+      mangle: true,
+    },
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react')) return 'react-vendor'
+            if (id.includes('recharts')) return 'charts'
+            if (id.includes('leaflet')) return 'maps'
+            if (id.includes('axios')) return 'http'
+            return 'vendor'
+          }
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000,
+  },
 })

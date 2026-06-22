@@ -63,6 +63,8 @@ def create_agent(
 ):
     if db.query(User).filter(User.email == user_data.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
+    if db.query(User).filter(User.phone == user_data.phone).first():
+        raise HTTPException(status_code=400, detail="Phone already registered")
     if db.query(User).filter(User.employee_id == user_data.employee_id).first():
         raise HTTPException(status_code=400, detail="Employee ID already exists")
 

@@ -11,12 +11,16 @@ interface DataTableProps<T> {
   columns: Column<T>[]
   data: T[]
   emptyMessage?: string
+  onRowClick?: (row: T) => void
+  selectedRowId?: number | string | null
 }
 
 export default function DataTable<T extends { id?: number | string }>({
   columns,
   data,
   emptyMessage = 'No data found',
+  onRowClick,
+  selectedRowId = null,
 }: DataTableProps<T>) {
   return (
     <div className="overflow-x-auto">
@@ -42,9 +46,13 @@ export default function DataTable<T extends { id?: number | string }>({
             </tr>
           ) : (
             data.map((row, i) => (
-              <tr key={row.id ?? i} className="hover:bg-gray-50 transition-colors">
+              <tr
+                key={row.id ?? i}
+                onClick={() => onRowClick && onRowClick(row)}
+                className={`${selectedRowId != null && String(selectedRowId) === String(row.id ?? i) ? 'bg-blue-600 text-white' : 'hover:bg-gray-50'} transition-colors cursor-pointer`}
+              >
                 {columns.map((col, j) => (
-                  <td key={j} className={`px-4 py-3 text-gray-700 ${col.className ?? ''}`}>
+                  <td key={j} className={`px-4 py-3 ${selectedRowId != null && String(selectedRowId) === String(row.id ?? i) ? '' : 'text-gray-700'} ${col.className ?? ''}`}>
                     {col.render ? col.render(row) : col.accessor ? String(row[col.accessor] ?? '') : ''}
                   </td>
                 ))}

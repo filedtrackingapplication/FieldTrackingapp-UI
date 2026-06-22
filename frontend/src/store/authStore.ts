@@ -27,7 +27,8 @@ export const useAuthStore = create<AuthState>()(
         const res = await authApi.login(username, password)
         const { access_token, user } = res.data
         localStorage.setItem('access_token', access_token)
-        set({ user, token: access_token, isAuthenticated: true })
+        // Mark as hydrated so ProtectedRoute stops returning null
+        set({ user, token: access_token, isAuthenticated: true, _hasHydrated: true })
       },
 
       logout: async () => {
@@ -36,6 +37,12 @@ export const useAuthStore = create<AuthState>()(
         } catch {
           // ignore errors on logout
         }
+        localStorage.removeItem('access_token')
+        set({ user: null, token: null, isAuthenticated: false })
+      },
+
+      // Synchronous local-only clear of auth (does not call backend).
+      clearAuth: () => {
         localStorage.removeItem('access_token')
         set({ user: null, token: null, isAuthenticated: false })
       },
