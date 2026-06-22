@@ -213,9 +213,12 @@ class Product(Base):
     category = Column(String(100), nullable=True)
     unit = Column(String(20), default="pcs")  # pcs, kg, ltr, box
     price = Column(Float, nullable=False)
+    tax_percent = Column(Float, default=0.0, nullable=False)
+    max_discount_percent = Column(Float, default=0.0, nullable=False)
     weight = Column(Float, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     inventory_items = relationship("Inventory", back_populates="product")
     order_items = relationship("OrderItem", back_populates="product")

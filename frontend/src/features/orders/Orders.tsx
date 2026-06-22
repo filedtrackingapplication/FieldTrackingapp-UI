@@ -1,11 +1,11 @@
 import { useEffect, useState, useRef } from 'react'
-import { ordersApi } from '../services/api'
-import type { Order, OrderStatus } from '../types'
-import DataTable from '../components/DataTable'
+import { ordersApi } from '../../services/api'
+import CreateOrderModal from './components/CreateOrder'
+import type { Order, OrderStatus } from '../../types'
+import DataTable from '../../components/DataTable'
 import { ShoppingCart, TrendingUp, Package } from 'lucide-react'
 import toast from 'react-hot-toast'
-import ImportTemplateButtons from '../components/ImportTemplateButtons'
-
+import ImportTemplateButtons from '../../components/ImportTemplateButtons'
 
 const statusBadge: Record<OrderStatus, string> = {
   pending: 'badge-yellow',
@@ -17,6 +17,7 @@ const statusBadge: Record<OrderStatus, string> = {
 }
 
 export default function Orders() {
+  const [showCreate, setShowCreate] = useState(false)
   const [orders, setOrders] = useState<Order[]>([])
   const [analytics, setAnalytics] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -84,7 +85,10 @@ export default function Orders() {
           <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
           <p className="text-gray-500 text-sm">{orders.length} orders</p>
         </div>
-        <button className="btn-primary flex items-center gap-2">
+        <button
+          className="btn-primary flex items-center gap-2"
+          onClick={() => setShowCreate(true)}
+        >
           <ShoppingCart className="w-4 h-4" /> New Order
         </button>
       </div>
@@ -127,18 +131,61 @@ export default function Orders() {
         <div className="mb-4 flex items-center gap-2">
           <ImportTemplateButtons
             accept=".csv"
-            onFile={(f)=>setCsvFile(f)}
-            onUpload={async ()=>{
-              if(!csvFile) { toast.error('Select CSV'); return }
+            onFile={(f) => setCsvFile(f)}
+            onUpload={async () => {
+              if (!csvFile) { toast.error('Select CSV'); return }
               setUploadProgress(0); setImportResult(null)
-              try{ await new Promise<void>((resolve,reject)=>{ const xhr=new XMLHttpRequest(); xhr.open('POST','/api/orders/import'); const token=localStorage.getItem('access_token'); if(token) xhr.setRequestHeader('Authorization', `Bearer ${token}`); xhr.upload.onprogress=(e)=>{ if(e.lengthComputable) setUploadProgress(Math.round((e.loaded/e.total)*100)) }; xhr.onload=()=>{ if(xhr.status>=200&&xhr.status<300){ setImportResult(JSON.parse(xhr.responseText)); toast.success('Import done'); setCsvFile(null); resolve() } else reject() }; xhr.onerror=()=>reject(); const fd=new FormData(); fd.append('file', csvFile||''); xhr.send(fd) }) }catch(e){ toast.error('Import failed') } finally{ setUploadProgress(null) }
+              try {
+                await new Promise<void>((resolve, reject) => {
+                  const xhr = new XMLHttpRequest()
+                  xhr.open('POST', '/api/orders/import')
+                  const token = localStorage.getItem('access_token')
+                  if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+                  xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100))
+                  }
+                  xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                      setImportResult(JSON.parse(xhr.responseText))
+                      toast.success('Import done')
+                      setCsvFile(null)
+                      resolve()
+                    } else reject()
+                  }
+                  xhr.onerror = () => reject()
+                  const fd = new FormData()
+                  fd.append('file', csvFile || '')
+                  xhr.send(fd)
+                })
+              } catch {
+                toast.error('Import failed')
+              } finally {
+                setUploadProgress(null)
+              }
             }}
-            templateFilename={'orders_template.csv'}
-            templateContent={'order_number,agent_id,customer_id\nORD-ABC123,1,41\n'}
+            templateFilename="orders_template.csv"
+            templateContent="order_number,agent_id,customer_id\nORD-ABC123,1,41\n"
           />
         </div>
         {uploadProgress !== null && <div className="mb-2">Uploading: {uploadProgress}%</div>}
-        {importResult && (<div className="mb-4 p-2 border rounded text-sm">Imported: {importResult.imported}<div className="max-h-36 overflow-auto"><table className="w-full text-xs"><tbody>{importResult.results.map((r:any)=>(<tr key={r.row}><td className="pr-2">{r.row}</td><td className="pr-2">{r.status}</td><td>{r.reason||r.id||''}</td></tr>))}</tbody></table></div></div>)}
+        {importResult && (
+          <div className="mb-4 p-2 border rounded text-sm">
+            Imported: {importResult.imported}
+            <div className="max-h-36 overflow-auto">
+              <table className="w-full text-xs">
+                <tbody>
+                  {importResult.results.map((r: any) => (
+                    <tr key={r.row}>
+                      <td className="pr-2">{r.row}</td>
+                      <td className="pr-2">{r.status}</td>
+                      <td>{r.reason || r.id || ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
         {/* Filter */}
         <div className="flex items-center gap-3 mb-4 flex-wrap">
           {(['', 'pending', 'confirmed', 'dispatched', 'delivered', 'cancelled'] as const).map((s) => (
@@ -164,6 +211,12 @@ export default function Orders() {
           <DataTable columns={columns} data={orders} emptyMessage="No orders found" />
         )}
       </div>
+      {showCreate && (
+        <CreateOrderModal
+          onClose={() => setShowCreate(false)}
+          onSuccess={() => { setShowCreate(false); load() }}
+        />
+      )}
     </div>
   )
 }

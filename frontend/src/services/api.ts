@@ -1,14 +1,45 @@
-import axios from 'axios'
+import axios, { AxiosHeaders } from 'axios'
 
 const api = axios.create({
   baseURL: '/api',
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Attach JWT token to every request
+// Bootstrap: set Authorization header immediately from localStorage on module load.
+const initToken = localStorage.getItem('access_token')
+if (initToken) {
+  api.defaults.headers.common['Authorization'] = `Bearer ${initToken}`
+}
+
+// Called by authStore after login/logout/rehydration to keep axios defaults in sync.
+export function setAuthToken(token: string | null) {
+  if (token) api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+  else delete api.defaults.headers.common['Authorization']
+}
+
+window.addEventListener('storage', (e) => {
+  if (e.key === 'access_token') setAuthToken(e.newValue)
+})
+
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token')
-  if (token) config.headers.Authorization = `Bearer ${token}`
+  // Primary: explicit access_token key set on login
+  let token = localStorage.getItem('access_token')
+  // Fallback: Zustand persisted auth store (covers page-refresh before setAuthToken fires)
+  if (!token) {
+    try {
+      const stored = localStorage.getItem('auth-storage')
+      if (stored) token = JSON.parse(stored)?.state?.token ?? null
+    } catch { /* ignore parse errors */ }
+  }
+  if (token) {
+    // Use AxiosHeaders.set() which is the only reliable way to set headers in axios v1.x
+    if (config.headers instanceof AxiosHeaders) {
+      config.headers.set('Authorization', `Bearer ${token}`)
+    } else {
+      config.headers = new AxiosHeaders({ ...(config.headers as object), Authorization: `Bearer ${token}` })
+    }
+    localStorage.setItem('access_token', token)
+  }
   return config
 })
 
@@ -18,8 +49,15 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
-      localStorage.removeItem('access_token')
-      window.dispatchEvent(new CustomEvent('auth:unauthorized'))
+      // Allow callers to opt-out of triggering a global logout by
+      // setting the `X-Skip-Logout` request header.
+      const skip = err.config?.headers?.['X-Skip-Logout'] || err.config?.headers?.['x-skip-logout']
+      // temporary: log 401 responses to aid debugging
+      try { console.warn('[API] 401 response for', err.config?.url) } catch (e) {}
+      if (!skip) {
+        localStorage.removeItem('access_token')
+        window.dispatchEvent(new CustomEvent('auth:unauthorized'))
+      }
     }
     return Promise.reject(err)
   }
@@ -94,8 +132,23 @@ export const ordersApi = {
 
 // ─── Inventory ───────────────────────────────────────────
 export const inventoryApi = {
-  products: (params?: object) => api.get('/inventory/products/', { params }),
-  createProduct: (data: object) => api.post('/inventory/products/', data),
+  // Products listing is called on route navigation and may be hit when a
+  // token is expired; avoid triggering a full app logout on a single 401
+  // by sending a header that opts out of the global 401 -> logout flow.
+  products: (params?: object) => {
+    const token = localStorage.getItem('access_token')
+    const headers: any = { 'X-Skip-Logout': '1' }
+    if (token) headers['Authorization'] = `Bearer ${token}`
+    return api.get('/inventory/products/', { params, headers })
+  },
+  createProduct: (data: object) => {
+    const token = localStorage.getItem('access_token')
+    const headers: any = {}
+    if (token) headers['Authorization'] = `Bearer ${token}`
+    return api.post('/inventory/products/', data, { headers })
+  },
+  updateProduct: (id: number, data: object) => api.put(`/inventory/products/${id}`, data),
+  deleteProduct: (id: number) => api.delete(`/inventory/products/${id}`),
   warehouse: (params?: object) => api.get('/inventory/warehouse/', { params }),
   updateStock: (id: number, data: object) => api.put(`/inventory/warehouse/${id}`, data),
   assignments: (params?: object) => api.get('/inventory/assignments/', { params }),

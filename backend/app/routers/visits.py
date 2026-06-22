@@ -86,7 +86,46 @@ def list_visits(
     if status:
         query = query.filter(Visit.status == status)
 
-    return query.order_by(Visit.visit_date.desc()).offset(skip).limit(limit).all()
+    results = query.order_by(Visit.visit_date.desc()).offset(skip).limit(limit).all()
+    # Normalize duration_minutes which may have been stored incorrectly as a datetime
+    from datetime import datetime as _dt, timedelta as _td
+    from typing import Any
+    for v in results:
+        dm: Any = getattr(v, 'duration_minutes', None)
+        if dm is None:
+            continue
+        try:
+            # timedelta -> minutes
+            if isinstance(dm, _td):
+                v.duration_minutes = int(dm.total_seconds() / 60)
+                continue
+            # datetime -> treat as epoch+seconds encoding
+            if isinstance(dm, _dt):
+                epoch = _dt(1970, 1, 1, tzinfo=dm.tzinfo)
+                v.duration_minutes = int((dm - epoch).total_seconds() / 60)
+                continue
+            # string -> try parse as ISO datetime, or numeric string
+            if isinstance(dm, str):
+                try:
+                    parsed = _dt.fromisoformat(dm)
+                    epoch = _dt(1970, 1, 1, tzinfo=parsed.tzinfo)
+                    v.duration_minutes = int((parsed - epoch).total_seconds() / 60)
+                    continue
+                except Exception:
+                    try:
+                        v.duration_minutes = int(float(dm))
+                        continue
+                    except Exception:
+                        v.duration_minutes = None
+                        continue
+            # numeric types
+            try:
+                v.duration_minutes = int(dm)
+            except Exception:
+                v.duration_minutes = None
+        except Exception:
+            v.duration_minutes = None
+    return results
 
 
 @router.get("/{visit_id}", response_model=VisitOut)

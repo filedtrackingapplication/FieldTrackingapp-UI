@@ -202,9 +202,9 @@ class VisitCreate(BaseModel):
     visit_date: date
     purpose: Optional[str] = None
     notes: Optional[str] = None
-    start_datetime: datetime
-    end_datetime: datetime
-    duration_minutes: datetime
+    start_datetime: Optional[datetime] = None
+    end_datetime: Optional[datetime] = None
+    duration_minutes: Optional[int] = None
 
 
 class VisitCheckIn(BaseModel):
@@ -225,13 +225,13 @@ class VisitOut(BaseModel):
     agent_id: int
     customer_id: int
     visit_date: date
-    check_in_time: datetime
+    check_in_time: Optional[datetime] = None
     check_in_lat: Optional[float] = None
     check_in_lng: Optional[float] = None
-    check_out_time: datetime
+    check_out_time: Optional[datetime] = None
     check_out_lat: Optional[float] = None
     check_out_lng: Optional[float] = None
-    duration_minutes: int
+    duration_minutes: Optional[int] = None
     status: VisitStatus
     purpose: Optional[str] = None
     notes: Optional[str] = None
@@ -253,7 +253,22 @@ class ProductCreate(BaseModel):
     category: Optional[str] = None
     unit: str = "pcs"
     price: float
+    tax_percent: float = 0.0
+    max_discount_percent: float = 0.0
     weight: Optional[float] = None
+    is_active: bool = True
+
+
+class ProductUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    unit: Optional[str] = None
+    price: Optional[float] = None
+    tax_percent: Optional[float] = None
+    max_discount_percent: Optional[float] = None
+    weight: Optional[float] = None
+    is_active: Optional[bool] = None
 
 
 class ProductOut(BaseModel):
@@ -264,8 +279,12 @@ class ProductOut(BaseModel):
     category: Optional[str] = None
     unit: str
     price: float
+    tax_percent: float
+    max_discount_percent: float
     weight: Optional[float] = None
     is_active: bool
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
