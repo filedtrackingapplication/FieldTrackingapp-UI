@@ -1,0 +1,27 @@
+{
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "files.watcherExclude": {
+        "**/venv/**": true,
+        "**/.venv/**": true,
+        "**/node_modules/**": true,
+        "**/__pycache__/**": true,
+        "**/*.pyc": true,
+        "**/backend/field_tracking.db*": true,
+        "**/backend/tmp_test.db": true
+    },
+    "files.exclude": {
+        "**/venv": true,
+        "**/.venv": true,
+        "**/node_modules": true,
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/backend/field_tracking.db*": true
+    },
+    "git.ignoredRepositoryPath": [],
+    "search.exclude": {
+        "**/venv/**": true,
+        "**/.venv/**": true,
+        "**/node_modules/**": true,
+        "**/__pycache__/**": true
+    }
+}
