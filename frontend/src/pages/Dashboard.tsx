@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Users, MapPin, ShoppingCart, DollarSign,
   ClipboardList, UserCheck, TrendingUp, Package
@@ -10,6 +11,7 @@ import type { DashboardStats } from '../types'
 import toast from 'react-hot-toast'
 
 export default function Dashboard() {
+  const navigate = useNavigate()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
 

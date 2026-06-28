@@ -115,35 +115,58 @@ def import_customers(
     created = 0
     parsed = 0
 
+    # Expected/new template header (order not enforced):
+    # name,phone,email,address,city,customer_type,assigned_agent_email
     for idx, row in enumerate(reader, start=1):
         parsed += 1
+        # Normalize and validate fields
         name = (row.get('name') or row.get('customer_name') or '').strip()
-        phone = (row.get('phone') or row.get('mobile') or '').strip()
-        if not name and not phone:
-            results.append({'row': idx, 'status': 'skipped', 'reason': 'missing name and phone'})
+        phone_raw = (row.get('phone') or row.get('mobile') or '').strip()
+        email_raw = (row.get('email') or '').strip()
+
+        # normalize phone: digits only
+        phone = ''.join(ch for ch in phone_raw if ch.isdigit())
+
+        if not name and not phone and not email_raw:
+            results.append({'row': idx, 'status': 'skipped', 'reason': 'missing name/phone/email'})
             continue
 
-        # skip duplicates by phone
-        if phone:
-            existing = db.query(Customer).filter(Customer.phone == phone).first()
-            if existing:
-                results.append({'row': idx, 'status': 'skipped', 'reason': 'duplicate phone'})
+        # basic email validation
+        email = None
+        if email_raw:
+            import re
+            if re.match(r"[^@]+@[^@]+\.[^@]+", email_raw):
+                email = email_raw.lower()
+            else:
+                results.append({'row': idx, 'status': 'skipped', 'reason': 'invalid email'})
                 continue
+
+        # skip duplicates by phone or email
+        duplicate = None
+        if phone:
+            duplicate = db.query(Customer).filter(Customer.phone == phone).first()
+        if not duplicate and email:
+            duplicate = db.query(Customer).filter(Customer.email == email).first()
+        if duplicate:
+            results.append({'row': idx, 'status': 'skipped', 'reason': 'duplicate'})
+            continue
 
         data = {
             'name': name or None,
             'phone': phone or None,
+            'email': email or None,
             'address': (row.get('address') or '').strip() or None,
             'city': (row.get('city') or '').strip() or None,
             'customer_type': (row.get('customer_type') or row.get('type') or '').strip() or None,
         }
-        if row.get('assigned_agent_id'):
-            try:
-                data['assigned_agent_id'] = int(row.get('assigned_agent_id'))
-            except ValueError:
-                data['assigned_agent_id'] = None
 
-        cust = Customer(**{k: v for k, v in data.items() if v is not None})
+        # assigned agent by email is preferred in template
+        assigned_agent_email = (row.get('assigned_agent_email') or '').strip().lower()
+        if assigned_agent_email:
+            from app.models.models import User
+            agent = db.query(User).filter(User.email == assigned_agent_email).first()
+            if agent:
+                data['assigned_agent_id'] = agent.id
         db.add(cust)
         try:
             db.commit()

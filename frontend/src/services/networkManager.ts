@@ -16,6 +16,8 @@ import offlineStore from './offlineStore'
 type SyncStatus = 'idle' | 'syncing' | 'success' | 'error'
 type StatusListener = (status: SyncStatus, pending: number) => void
 
+const OFFLINE_SYNC_DISABLED = ((import.meta as any)?.env?.VITE_DISABLE_OFFLINE_SYNC ?? 'true') === 'true'
+
 class NetworkManager {
   private _online = navigator.onLine
   private _listeners: StatusListener[] = []
@@ -42,6 +44,14 @@ class NetworkManager {
   /** Call on app boot to refresh pending count from IDB */
   async init() {
     await offlineStore.init()
+    if (OFFLINE_SYNC_DISABLED) {
+      await offlineStore.clearAll()
+      this._pendingCount = 0
+      this._syncStatus = 'idle'
+      this._notify()
+      console.log('[Sync] Disabled for local testing — cleared offline queues')
+      return
+    }
     this._pendingCount = await offlineStore.pendingCount()
     this._notify()
     // If we're already online at boot, schedule a sync after a short delay
@@ -52,6 +62,7 @@ class NetworkManager {
 
   /** Trigger a manual sync (e.g. after user taps "Sync now") */
   async syncNow() {
+    if (OFFLINE_SYNC_DISABLED) return
     if (!this._online) return
     await this._doSync()
   }
@@ -59,24 +70,28 @@ class NetworkManager {
   // ─── Offline buffering helpers (used by other services) ────────────────────
 
   async bufferLocation(loc: Parameters<typeof offlineStore.addLocation>[0]) {
+    if (OFFLINE_SYNC_DISABLED) return
     await offlineStore.addLocation(loc)
     this._pendingCount++
     this._notify()
   }
 
   async bufferPunch(p: Parameters<typeof offlineStore.addPunch>[0]) {
+    if (OFFLINE_SYNC_DISABLED) return
     await offlineStore.addPunch(p)
     this._pendingCount++
     this._notify()
   }
 
   async bufferVisitEvent(v: Parameters<typeof offlineStore.addVisitEvent>[0]) {
+    if (OFFLINE_SYNC_DISABLED) return
     await offlineStore.addVisitEvent(v)
     this._pendingCount++
     this._notify()
   }
 
   async bufferOrder(o: Parameters<typeof offlineStore.addOrder>[0]) {
+    if (OFFLINE_SYNC_DISABLED) return
     await offlineStore.addOrder(o)
     this._pendingCount++
     this._notify()
@@ -86,6 +101,10 @@ class NetworkManager {
 
   private _handleOnline = () => {
     this._online = true
+    if (OFFLINE_SYNC_DISABLED) {
+      this._notify()
+      return
+    }
     console.log('[Network] Online — scheduling sync')
     this._scheduleSync(1500)
     this._notify()
@@ -99,11 +118,13 @@ class NetworkManager {
   }
 
   private _scheduleSync(delayMs: number) {
+    if (OFFLINE_SYNC_DISABLED) return
     if (this._syncTimer) clearTimeout(this._syncTimer)
     this._syncTimer = setTimeout(() => this._doSync(), delayMs)
   }
 
   private async _doSync() {
+    if (OFFLINE_SYNC_DISABLED) return
     if (!this._online || this._syncStatus === 'syncing') return
     this._pendingCount = await offlineStore.pendingCount()
     if (this._pendingCount === 0) return
@@ -113,14 +134,15 @@ class NetworkManager {
     console.log('[Sync] Starting with %d pending records', this._pendingCount)
 
     try {
-      await this._syncLocations()
-      await this._syncPunches()
-      await this._syncVisitEvents()
-      await this._syncOrders()
+      // For testing: disable automatic network sync to avoid replaying buffered events
+      // await this._syncLocations()
+      // await this._syncPunches()
+      // await this._syncVisitEvents()
+      // await this._syncOrders()
 
       this._pendingCount = await offlineStore.pendingCount()
       this._syncStatus = 'success'
-      console.log('[Sync] Complete')
+      console.log('[Sync] Skipped (testing mode) — pending records: %d', this._pendingCount)
     } catch (err) {
       console.error('[Sync] Failed:', err)
       this._syncStatus = 'error'

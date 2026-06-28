@@ -1,7 +1,11 @@
 import axios, { AxiosHeaders } from 'axios'
 
+// In dev you can set VITE_API_BASE to "http://localhost:8000/api" so requests
+// go directly to the backend (avoids dev-server redirects that may drop
+// Authorization headers). Otherwise default to proxied `/api`.
+const apiBase = (import.meta as any)?.env?.VITE_API_BASE || '/api'
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: apiBase,
   headers: { 'Content-Type': 'application/json' },
 })
 
@@ -21,7 +25,22 @@ window.addEventListener('storage', (e) => {
   if (e.key === 'access_token') setAuthToken(e.newValue)
 })
 
+// Debug logging flag — set to true to enable request/response debug output
+const API_DEBUG = !!(process.env.NODE_ENV !== 'production')
+
 api.interceptors.request.use((config) => {
+  if (API_DEBUG) {
+    try {
+      const method = config.method?.toUpperCase() || 'GET'
+      const url = config.url || config.baseURL || ''
+      // Attempt to serialize headers for debug output
+      const hdrs = (config.headers && typeof config.headers === 'object') ? config.headers : {}
+      // AxiosHeaders may be present — try to call toJSON if available
+      const headersForLog = (hdrs && (hdrs as any).toJSON) ? (hdrs as any).toJSON() : hdrs
+      // Use console.debug to avoid noise in production consoles
+      console.debug('[API][Request]', method, url, headersForLog)
+    } catch (e) { /* ignore logging errors */ }
+  }
   // Primary: explicit access_token key set on login
   let token = localStorage.getItem('access_token')
   // Fallback: Zustand persisted auth store (covers page-refresh before setAuthToken fires)
@@ -59,6 +78,13 @@ api.interceptors.response.use(
         window.dispatchEvent(new CustomEvent('auth:unauthorized'))
       }
     }
+    if (API_DEBUG) {
+      try {
+        console.debug('[API][Response Error] url=', err.config?.url, 'status=', err.response?.status)
+        console.debug('[API][Response Error] request headers=', err.config?.headers)
+        console.debug('[API][Response Error] response data=', err.response?.data)
+      } catch (e) { /* ignore */ }
+    }
     return Promise.reject(err)
   }
 )
@@ -83,7 +109,12 @@ export const agentsApi = {
   list: (params?: object) => api.get('/agents/', { params }),
   get: (id: number) => api.get(`/agents/${id}`),
   create: (data: object) => api.post('/agents/', data),
-  update: (id: number, data: object) => api.put(`/agents/${id}`, data),
+  update: (id: number, data: object) => {
+    const token = localStorage.getItem('access_token')
+    const headers: any = {}
+    if (token) headers['Authorization'] = `Bearer ${token}`
+    return api.put(`/agents/${id}`, data, { headers })
+  },
   deactivate: (id: number) => api.delete(`/agents/${id}`),
   stats: (id: number) => api.get(`/agents/${id}/stats`),
   onboard: (data: object) => api.post('/agents/onboard', data),
@@ -141,12 +172,7 @@ export const inventoryApi = {
     if (token) headers['Authorization'] = `Bearer ${token}`
     return api.get('/inventory/products/', { params, headers })
   },
-  createProduct: (data: object) => {
-    const token = localStorage.getItem('access_token')
-    const headers: any = {}
-    if (token) headers['Authorization'] = `Bearer ${token}`
-    return api.post('/inventory/products/', data, { headers })
-  },
+  createProduct: (data: object) => api.post('/inventory/products/', data),
   updateProduct: (id: number, data: object) => api.put(`/inventory/products/${id}`, data),
   deleteProduct: (id: number) => api.delete(`/inventory/products/${id}`),
   warehouse: (params?: object) => api.get('/inventory/warehouse/', { params }),

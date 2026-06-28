@@ -133,7 +133,7 @@ export default function Customers() {
               }
             }}
             templateFilename={'customers_template.csv'}
-            templateContent={'name,phone,city,customer_type,assigned_agent_id\nShop A,8887776666,Pune,retail,\n'}
+            templateContent={'name,phone,email,address,city,customer_type,assigned_agent_email\nShop A,8887776666,shopa@example.com,123 Main St,Pune,retail,agent@example.com\n'}
           />
         </div>
       </div>

@@ -5,7 +5,8 @@ import './index.css'
 import networkManager from './services/networkManager'
 
 // ─── Service Worker registration ──────────────────────────────────────────────
-if ('serviceWorker' in navigator) {
+// Register service worker only in production builds
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/sw.js')

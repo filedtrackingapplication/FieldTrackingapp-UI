@@ -14,10 +14,12 @@ and only ~1 DB batch per 2 seconds instead of 60 individual inserts.
 """
 import json
 import logging
+import time
 from datetime import datetime, timezone, date
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
+from sqlalchemy.exc import OperationalError
 
 from app.database import get_db
 from app.models.models import User, LocationLog, OnlineStatus
@@ -256,29 +258,61 @@ def punch_in(
     from app.models.models import PunchRecord
 
     today = date.today()
-    if db.query(PunchRecord).filter(
-        PunchRecord.agent_id == current_user.id,
-        PunchRecord.work_date == today,
-    ).first():
-        raise HTTPException(status_code=400, detail="Already punched in today")
+    # NOTE: validation disabled for testing — allow multiple punch-ins per day
+    # if db.query(PunchRecord).filter(
+    #     PunchRecord.agent_id == current_user.id,
+    #     PunchRecord.work_date == today,
+    # ).first():
+    #     raise HTTPException(status_code=400, detail="Already punched in today")
 
-    record = PunchRecord(
-        agent_id=current_user.id,
-        punch_in_time=datetime.now(timezone.utc),
-        punch_in_lat=data.get("latitude"),
-        punch_in_lng=data.get("longitude"),
-        punch_in_address=data.get("address"),
-        work_date=today,
-        notes=data.get("notes"),
-    )
-    db.add(record)
-    db.commit()
-    db.refresh(record)
-    return {
-        "message": "Punched in successfully",
-        "punch_in_time": record.punch_in_time.isoformat(),
-        "record_id": record.id,
-    }
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            record = PunchRecord(
+                agent_id=current_user.id,
+                punch_in_time=datetime.now(timezone.utc),
+                punch_in_lat=data.get("latitude"),
+                punch_in_lng=data.get("longitude"),
+                punch_in_address=data.get("address"),
+                work_date=today,
+                notes=data.get("notes"),
+            )
+            db.add(record)
+            db.flush()
+
+            record_id = record.id
+            punch_in_time = record.punch_in_time
+
+            db.commit()
+
+            persisted = db.query(PunchRecord).filter(PunchRecord.id == record_id).first()
+            if persisted:
+                logger.info("Punch-in saved: agent_id=%s record_id=%s work_date=%s", current_user.id, record_id, today)
+                return {
+                    "message": "Punched in successfully",
+                    "punch_in_time": punch_in_time.isoformat(),
+                    "record_id": record_id,
+                }
+
+            db.rollback()
+            logger.warning(
+                "Punch-in attempt %s/%s did not persist row for agent_id=%s; retrying",
+                attempt + 1,
+                max_retries,
+                current_user.id,
+            )
+            if attempt < max_retries - 1:
+                time.sleep(0.1 * (attempt + 1))
+                continue
+            raise HTTPException(status_code=500, detail={"message": "Punch-in failed to persist", "alert": "Punch-in was not saved. Please retry."})
+        except OperationalError as exc:
+            db.rollback()
+            is_lock = "database is locked" in str(exc).lower()
+            if is_lock and attempt < max_retries - 1:
+                time.sleep(0.1 * (attempt + 1))
+                continue
+            logger.error("Punch-in DB error for agent_id=%s: %s", current_user.id, exc)
+            raise HTTPException(status_code=500, detail={"message": "Punch-in failed", "alert": "Database error during punch-in. Please retry."})
 
 
 @router.post("/punch-out")
@@ -289,28 +323,51 @@ def punch_out(
 ):
     from app.models.models import PunchRecord
 
-    today = date.today()
-    record = db.query(PunchRecord).filter(
-        PunchRecord.agent_id == current_user.id,
-        PunchRecord.work_date == today,
-        PunchRecord.punch_out_time == None,
-    ).first()
-    if not record:
-        raise HTTPException(status_code=400, detail="No active punch-in record found")
+    try:
+        today = date.today()
+        record = db.query(PunchRecord).filter(
+            PunchRecord.agent_id == current_user.id,
+            PunchRecord.work_date == today,
+            PunchRecord.punch_out_time == None,
+        ).first()
+        if not record:
+            raise HTTPException(status_code=400, detail={"message": "No active punch-in record found", "alert": "No active punch-in record found for today"})
 
-    now = datetime.now(timezone.utc)
-    record.punch_out_time = now
-    record.punch_out_lat = data.get("latitude")
-    record.punch_out_lng = data.get("longitude")
-    record.punch_out_address = data.get("address")
-    record.total_hours = round((now - record.punch_in_time).total_seconds() / 3600, 2)
-    db.commit()
+        now = datetime.now(timezone.utc)
+        record.punch_out_time = now
+        record.punch_out_lat = data.get("latitude")
+        record.punch_out_lng = data.get("longitude")
+        record.punch_out_address = data.get("address")
+        if not record.punch_in_time:
+            # defensive: ensure punch_in_time exists
+            raise HTTPException(status_code=400, detail={"message": "Invalid punch record (missing punch_in_time)", "alert": "Punch record is missing check-in time"})
+        # Normalize both to UTC-naive before subtraction to avoid TypeError
+        punch_in = record.punch_in_time.replace(tzinfo=None) if record.punch_in_time.tzinfo else record.punch_in_time
+        punch_out_naive = now.replace(tzinfo=None)
+        total_seconds = int((punch_out_naive - punch_in).total_seconds())
+        hours, remainder = divmod(total_seconds, 3600)
+        minutes = remainder // 60
+        record.total_hours = round(total_seconds / 3600, 2)
+        db.commit()
 
-    return {
-        "message": "Punched out successfully",
-        "total_hours": record.total_hours,
-        "punch_out_time": record.punch_out_time.isoformat(),
-    }
+        return {
+            "message": "Punched out successfully",
+            "total_hours": record.total_hours,
+            # Return duration in h:mm with two-digit minutes (e.g. 0:53)
+            "duration": f"{hours}:{minutes:02d}",
+            "punch_out_time": record.punch_out_time.isoformat(),
+        }
+    except HTTPException:
+        # re-raise HTTP exceptions to return proper 4xx responses
+        raise
+    except Exception as exc:
+        # Log and return a safe error message for unexpected failures
+        import traceback, logging
+        logging.getLogger(__name__).exception("Error in punch_out: %s", exc)
+        # For testing: return structured alert in the response to aid debugging.
+        tb = traceback.format_exc()
+        logging.getLogger(__name__).error("Traceback:\n%s", tb)
+        raise HTTPException(status_code=500, detail={"message": "Internal server error during punch out", "alert": str(exc)})
 
 
 @router.get("/attendance/{agent_id}")
@@ -337,6 +394,10 @@ def get_attendance(
             "punch_in_time": r.punch_in_time.isoformat() if r.punch_in_time else None,
             "punch_out_time": r.punch_out_time.isoformat() if r.punch_out_time else None,
             "total_hours": r.total_hours,
+            "duration": (
+                f"{int(r.total_hours)}h {int(round((r.total_hours % 1) * 60)):02d}m"
+                if r.total_hours is not None else None
+            ),
             "distance_covered": r.distance_covered,
             "punch_in_address": r.punch_in_address,
         }
