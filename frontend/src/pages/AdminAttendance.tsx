@@ -73,7 +73,7 @@ export default function AdminAttendance() {
                     <td className="px-3 py-2">{r.work_date}</td>
                     <td className="px-3 py-2">{r.punch_in_time ?? '-'}</td>
                     <td className="px-3 py-2">{r.punch_out_time ?? '-'}</td>
-                    <td className="px-3 py-2">{r.total_hours ?? '-'}</td>
+                    <td className="px-3 py-2">{r.duration ?? (r.total_hours != null ? `${r.total_hours} hrs` : '-')}</td>
                     <td className="px-3 py-2">{r.notes ?? '-'}</td>
                   </tr>
                 ))}

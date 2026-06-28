@@ -14,7 +14,8 @@ function calcAmount(line: OrderProductLine): number {
   const discount = line.discount_type === 'percent'
     ? (base * line.discount) / 100
     : line.discount
-  return Math.max(0, base - discount + (Math.max(0, base - discount) * line.tax_percent) / 100)
+  const tax = Math.max(0, base) * (line.tax_percent || 0) / 100
+  return Math.max(0, base - discount + tax)
 }
 
 function newCollection(): CollectionLine {
@@ -119,10 +120,10 @@ export default function CreateOrderModal({ onClose, onSuccess }: Props) {
   }, 0)
   const totalTax = form.products.reduce((s, p) => {
     const base = p.unit_price * p.quantity
-    const disc = p.discount_type === 'percent' ? (base * p.discount) / 100 : p.discount
-    return s + Math.max(0, (base - disc) * p.tax_percent / 100)
+    return s + (Math.max(0, base) * (p.tax_percent || 0) / 100)
   }, 0)
-  const grossTotal = form.products.reduce((s, p) => s + calcAmount(p), 0)
+  const totalAmount = form.products.reduce((s, p) => s + (p.unit_price * p.quantity), 0)
+  const grossTotal = totalAmount - totalDiscount + totalTax
   const collected = form.collections.reduce((s, c) => s + (Number(c.amount) || 0), 0)
   const due = grossTotal - collected
 
@@ -176,9 +177,12 @@ export default function CreateOrderModal({ onClose, onSuccess }: Props) {
           discount: p.discount_type === 'percent'
             ? (p.unit_price * p.quantity * p.discount) / 100
             : p.discount,
-          total_price: p.amount,
+          tax: (p.unit_price * p.quantity) * (p.tax_percent || 0) / 100,
+          total_price: (p.unit_price * p.quantity) - (p.discount_type === 'percent'
+            ? (p.unit_price * p.quantity * p.discount) / 100
+            : p.discount) + ((p.unit_price * p.quantity) * (p.tax_percent || 0) / 100),
         })),
-        subtotal: grossTotal - totalTax,
+        subtotal: totalAmount - totalDiscount,
         discount: totalDiscount,
         tax: totalTax,
         total_amount: grossTotal,
@@ -337,8 +341,7 @@ export default function CreateOrderModal({ onClose, onSuccess }: Props) {
                               onClick={() => addProduct(p)}
                               className={`px-3 py-2 cursor-pointer text-sm ${idx === prodHighlight ? 'bg-primary-50 text-primary-700' : 'hover:bg-gray-50'}`}
                             >
-                              <span className="font-medium">{p.name}</span>
-                              <span className="text-gray-400 ml-2 text-xs">{p.category} · ₹{p.price}</span>
+                              <span className="font-medium">{p.name} - <span className="text-gray-500">{p.category}</span> - <span className="text-gray-700">₹{p.price}</span></span>
                             </div>
                           ))}
                         </div>
@@ -390,7 +393,7 @@ export default function CreateOrderModal({ onClose, onSuccess }: Props) {
 
             {/* SUMMARY */}
             <div className="bg-gray-50 rounded-lg border border-gray-200 px-4 py-3 space-y-1.5">
-              <SummaryRow label="Total Amount" value={`₹${grossTotal.toFixed(0)}`} />
+              <SummaryRow label="Total Amount" value={`₹${totalAmount.toFixed(0)}`} />
               <SummaryRow label="Tax" value={`₹${totalTax.toFixed(0)}`} />
               <SummaryRow label="Discount" value={`- ₹${totalDiscount.toFixed(0)}`} />
               <div className="border-t border-gray-200 pt-1.5">

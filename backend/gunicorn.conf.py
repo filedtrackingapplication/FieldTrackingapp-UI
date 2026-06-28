@@ -17,7 +17,12 @@ import os
 worker_class = "uvicorn.workers.UvicornWorker"
 
 # Recommended: (2 × cores) + 1
-workers = int(os.environ.get("WEB_CONCURRENCY", (multiprocessing.cpu_count() * 2) + 1))
+is_sqlite = "sqlite" in os.environ.get("DATABASE_URL", "sqlite:///./field_tracking.db").lower()
+if is_sqlite:
+    # SQLite is a file-based DB and does not support multiple writer processes well.
+    workers = 1
+else:
+    workers = int(os.environ.get("WEB_CONCURRENCY", (multiprocessing.cpu_count() * 2) + 1))
 
 # WebSocket connections are long-lived; each worker can sustain many with asyncio
 worker_connections = 1000

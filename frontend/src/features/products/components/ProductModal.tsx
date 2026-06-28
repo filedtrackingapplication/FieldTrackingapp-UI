@@ -59,6 +59,12 @@ export default function ProductModal({ onClose, onSuccess, initial }: Props) {
         is_active: form.status === 'active',
         description: form.description || undefined,
       }
+      // Debug: log token and payload to help diagnose Authorization issues in dev
+      try {
+        if (process.env.NODE_ENV !== 'production') {
+          console.debug('[ProductModal] creating product, payload=', payload, 'token=', localStorage.getItem('access_token'))
+        }
+      } catch (e) {}
       if (isEdit && initial) {
         await inventoryApi.updateProduct(initial.id, payload)
         toast.success('Product updated')

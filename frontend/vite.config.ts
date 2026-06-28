@@ -5,15 +5,19 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    // Explicit host and HMR config to ensure the client websocket
+    // connects reliably in various environments (Windows, WSL, VPNs).
+    host: 'localhost',
+    hmr: {
+      protocol: 'ws',
+      host: 'localhost',
+      port: 5173,
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
-      },
-      '/uploads': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-      },
+      }
     },
   },
   build: {

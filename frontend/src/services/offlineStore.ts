@@ -35,6 +35,10 @@ export type PendingPunch = {
   longitude: number
   address?: string
   notes?: string
+  photo?: string
+  odometer_in?: string
+  odometer_out?: string
+  remark?: string
   timestamp: string     // ISO string
 }
 
@@ -149,6 +153,16 @@ class OfflineStoreClass {
   addOrder = (o: Omit<PendingOrder, 'id'>) => this.add<PendingOrder>('orders', o)
   getOrders = () => this.getAll<PendingOrder>('orders')
   deleteOrder = (id: number) => this.delete('orders', id)
+
+  async clearAll(): Promise<void> {
+    await Promise.all([
+      this.clear('locations'),
+      this.clear('punches'),
+      this.clear('visits'),
+      this.clear('orders'),
+      this.clear('expenses'),
+    ])
+  }
 
   async pendingCount(): Promise<number> {
     const counts = await Promise.all([

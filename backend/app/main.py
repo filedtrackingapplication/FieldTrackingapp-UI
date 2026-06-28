@@ -37,15 +37,24 @@ async def lifespan(app: FastAPI):
         from app.routers.tracking import manager as ws_manager
         await ws_manager.init_redis(settings.REDIS_URL)
 
-    # Start location buffer flush background task
-    flush_task = asyncio.create_task(periodic_location_flush())
-    logger.info("TrackForce backend started (workers share Redis: %s)", settings.REDIS_ENABLED)
+    # Start location buffer flush background task.
+    # Skip on SQLite: the periodic DB write races with HTTP handler writes and
+    # causes 'database is locked' errors.  On SQLite there are no real 200-300
+    # concurrent GPS agents anyway, so the buffer is always empty.
+    _is_sqlite = "sqlite" in settings.DATABASE_URL
+    flush_task = None
+    if not _is_sqlite:
+        flush_task = asyncio.create_task(periodic_location_flush())
+    logger.info("TrackForce backend started (workers share Redis: %s, flush_task: %s)",
+                settings.REDIS_ENABLED, "disabled (SQLite)" if _is_sqlite else "running")
 
     yield
 
     # ── Shutdown ─────────────────────────────────────────────────────────────
-    flush_task.cancel()
-    await flush_all_pending()   # drain any remaining buffered locations
+    if flush_task:
+        flush_task.cancel()
+    if not _is_sqlite:
+        await flush_all_pending()   # drain any remaining buffered locations
 
     if settings.REDIS_ENABLED:
         from app.routers.tracking import manager as ws_manager

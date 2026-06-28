@@ -62,7 +62,7 @@ export default function AddAgentModal({
   }
   const handleBlur = (fieldName: keyof AddAgentFormData) => {
     setTouched(prev => new Set([...prev, fieldName]))
-    const error = validateField(fieldName, formData[fieldName])
+    const error = validateField(fieldName, formData[fieldName], mode === 'edit')
     setErrors(prev => ({ ...prev, [fieldName]: error || undefined }))
   }
 
@@ -120,7 +120,7 @@ export default function AddAgentModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    const newErrors = validateAgentForm(formData)
+    const newErrors = validateAgentForm(formData, mode === 'edit')
     setErrors(newErrors)
 
     if (Object.keys(newErrors).length > 0) {

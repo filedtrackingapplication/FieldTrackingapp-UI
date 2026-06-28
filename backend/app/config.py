@@ -10,6 +10,10 @@ class Settings(BaseSettings):
     # Database — swap to PostgreSQL in production:
     # DATABASE_URL=postgresql://user:pass@host:5432/trackforce
     DATABASE_URL: str = "sqlite:///./field_tracking.db"
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_TIMEOUT: int = 30
+    DB_POOL_RECYCLE: int = 1800
 
     # DB connection pool (PostgreSQL)
     DB_POOL_SIZE: int = 20
@@ -32,7 +36,9 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
 
     # CORS
-    ALLOWED_ORIGINS: list = ["http://localhost:5173", "http://localhost:3000"]
+    # Include both common dev ports used by Vite (5173, 5174) to avoid CORS
+    # preflight failures when the dev server runs on an alternate port.
+    ALLOWED_ORIGINS: list = ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"]
 
     # File Upload
     UPLOAD_DIR: str = "uploads"

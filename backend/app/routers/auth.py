@@ -1,14 +1,19 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
-from app.database import get_db
+from app.database import get_db, commit_with_retry
 from app.models.models import User, OnlineStatus
 from app.schemas.schemas import UserCreate, UserOut, Token
 from app.services.auth_service import (
     hash_password, verify_password, create_access_token, get_current_user
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -56,7 +61,14 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     # Mark online
     user.online_status = OnlineStatus.ONLINE
     user.last_seen = datetime.now(timezone.utc)
-    db.commit()
+
+    try:
+        commit_with_retry(db)
+    except OperationalError as exc:
+        if "database is locked" in str(exc).lower():
+            logger.warning("Login commit failed due to transient SQLite lock, continuing with login: %s", exc)
+        else:
+            raise
 
     token = create_access_token({"sub": str(user.id)})
     return {"access_token": token, "token_type": "bearer", "user": user}
